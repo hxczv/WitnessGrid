@@ -44,7 +44,7 @@ WitnessGrid/
 
 ### Runtime topology (local dev)
 
-`supabase start` (Docker) serves Postgres + PostGIS + Auth (magic-link emails land in the local **Inbucket** inbox). `wrangler dev` emulates R2 and the Worker. Local Redis via Docker (`redis-stack`) behind a dev-only flag, `ioredis` on Upstash in prod. Web and worker hit each other with CORS configured for `localhost` and the deployed web origin. All credentials via placeholder env vars; `.env.example` documents each. A **seed script** populates a set of realistic UK incidents so the map and register render without manual data.
+`supabase start` (Docker) serves Postgres + PostGIS + Auth (magic-link emails land in the local **Inbucket** inbox). `wrangler dev` runs the real Workers runtime with local R2 storage. Local Redis via Docker (`redis-stack`) behind a dev-only flag, `ioredis` on Upstash in prod. Web and worker hit each other with CORS configured for `localhost` and the deployed web origin. All credentials via env vars; `.env.example` documents each. A dev-only seed script populates sample UK incidents so the map and register render without manual data entry.
 
 ### Production topology (£0)
 
@@ -244,8 +244,8 @@ Lazy-loaded media, CDN caching, paginated feeds, background/queued uploads, clie
 ## 13. Testing & CI
 
 - `packages/contract`: zod schema tests.
-- `backend`: vitest — handler tests with mocked repo; integration tests against local Supabase.
-- `web`: Playwright smoke — signup → capture → submit → appears in feed; unit tests for offline-queue logic. Camera in CI runs against a **mocked media stream** (Playwright grants permission + a fake device); the file-picker upload path is the covered fallback where the camera can't be emulated.
+- `backend`: vitest — integration tests against local Supabase (real migrations + seeded data), plus contract-schema unit tests.
+- `web`: Playwright smoke — signup → capture → submit → appears in feed; unit tests for offline-queue logic. The camera flow runs end-to-end in CI using Chromium's built-in test media-device flag; the file-picker path covers uploads where no camera exists.
 - GitHub Actions: `lint + typecheck + test` on push; deploy (wrangler + Supabase migrations) on main — wired and ready, runs once credentials exist.
 - Visual: reduced-motion and focus-state checks in the smoke suite.
 
