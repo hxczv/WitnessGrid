@@ -38,23 +38,23 @@ WitnessGrid/
   web/                         Next.js App Router + Serwist PWA + Tailwind + React Query + Zustand
   backend/                     Hono on Cloudflare Workers (wrangler)
   mobile/                      placeholder (Phase 4)
-  infra/supabase/migrations/   SQL migrations
+  infra/db/migrations/          SQL migrations (pure SQL — run on local Postgres and hosted Postgres)
   docs/superpowers/specs/      design + plan docs
 ```
 
 ### Runtime topology (local dev)
 
-`supabase start` (Docker) serves Postgres + PostGIS + Auth (magic-link emails land in the local **Inbucket** inbox). `wrangler dev` runs the real Workers runtime with local R2 storage. Local Redis via Docker (`redis-stack`) behind a dev-only flag, `ioredis` on Upstash in prod. Web and worker hit each other with CORS configured for `localhost` and the deployed web origin. All credentials via env vars; `.env.example` documents each. A dev-only seed script populates sample UK incidents so the map and register render without manual data entry.
+`web` (Next) → HTTP → `backend` (wrangler dev) → local PostgreSQL + PostGIS (native Windows install) + local R2 storage (wrangler). Local Redis via Docker is unavailable on this machine, so the rate-limiter runs against Postgres-backed counters in dev with the Upstash implementation wired for production. Web and worker hit each other with CORS configured for `localhost` and the deployed web origin. All credentials via env vars; `.env.example` documents each. A dev-only seed script populates sample UK incidents so the map and register render without manual data entry.
 
 ### Production topology (£0)
 
 - **Web**: Cloudflare Pages (Next on Pages, or Worker build) + CDN. SSR/SSG for indexable pages.
 - **Backend**: Hono on Cloudflare Workers (~100k req/day free), REST.
-- **DB**: Supabase Postgres + PostGIS (EU region), full-text search via `tsvector` (no separate search infra).
-- **Cache/rate-limit**: Upstash Redis (pay-per-request).
+- **DB**: hosted Postgres + PostGIS (Supabase platform, EU region), full-text search via `tsvector` (no separate search infra). Migrations are pure SQL shared with local dev.
+- **Cache/rate-limit**: Upstash Redis (pay-per-request). Dev uses Postgres-backed counters.
 - **Storage**: Cloudflare R2 (free egress, 10GB free). Original + compressed + thumbnail per media item.
 - **Analytics**: Cloudflare Web Analytics (free, cookieless).
-- **Auth**: Supabase Auth — email/magic-link only (see §7).
+- **Auth**: first-party Worker auth — email/magic-link only (see §7); JWT signed in the Worker; email via SMTP provider (Resend) in production, dev-console delivery when no SMTP is configured.
 - **CI/CD**: GitHub Actions on public repo.
 - **Usage alerting**: dashboards for Workers/R2/Supabase/Upstash ceilings.
 
@@ -102,7 +102,7 @@ Capture → **Pin location** (drag the pre-pinned GPS point to the exact spot, o
 
 ## 6. Data model
 
-Postgres + PostGIS (Supabase, EU region). RLS enabled on all tables.
+Postgres + PostGIS. RLS enabled on all tables.
 
 ### Enums (in `packages/contract`, mirrored as Postgres types)
 
@@ -115,8 +115,9 @@ Postgres + PostGIS (Supabase, EU region). RLS enabled on all tables.
 
 ```
 Users
-  id (uuid, = Supabase auth id), username (unique, pseudonymous), email (nullable, login-only),
-  created_at, subscription_tier, supporter_since (nullable)
+  id (uuid, primary key — issued by the Worker's first-party auth), username (unique, pseudonymous),
+  email (nullable, login-only), created_at, subscription_tier, supporter_since (nullable),
+  password_hash (nullable, Argon2 — for email/password sign-in if enabled later; magic-link-only in Phase 1)
 
 Incidents
   id, user_id, type, police_force, location (geography(Point,4326)),
@@ -154,11 +155,14 @@ AuditLog                       (Phase 3)
 
 ## 7. Auth & permissions
 
-- **Supabase Auth: email/magic-link only** (passwordless). Registration requires a chosen unique pseudonymous username (set at signup).
+First-party auth implemented in the Worker (no external auth provider):
+
+- **Sign-up / sign-in via email magic-link only.** Magic-link tokens are short-lived, single-use, stored hashed; verifying a link creates/confirms the session. Registration requires a chosen unique pseudonymous username (set at signup).
+- **Email delivery**: via SMTP provider (Resend) when `SMTP_*` env vars are configured; in local dev with no SMTP set, the magic link is rendered to the dev console log (standard framework-dev-mail pattern, real delivery the moment SMTP is configured).
+- Sessions are JWTs signed by the Worker with a `JWT_SECRET` env key; the worker verifies the JWT on every protected route. `jti`/`exp` enforced; refresh by re-issuing on magic-link re-verification.
 - Guests (unauthenticated): browse all public pages, map, feed, incident detail. No mutations.
 - **Every mutating endpoint requires a registered session** — including `/upload` and `/incident`.
 - Email is stored for login only; never displayed anywhere.
-- Session via Supabase JWT; the worker verifies JWTs on every protected route.
 - **Phase 1 profile**: username + "my submissions" (list, per-incident view counts, and the delete/withdraw action that powers erasure) + sign out. Guest visitors see a clear "Sign in to report" path on every guarded action (capture, map, feed) — reading stays completely open.
 
 ## 8. API contract
@@ -261,14 +265,14 @@ Lazy-loaded media, CDN caching, paginated feeds, background/queued uploads, clie
 ## 13. Testing & CI
 
 - `packages/contract`: zod schema tests.
-- `backend`: vitest — integration tests against local Supabase (real migrations + seeded data), plus contract-schema unit tests.
+- `backend`: vitest — integration tests against local Postgres (real migrations + seeded data), plus contract-schema unit tests.
 - `web`: Playwright smoke — signup → capture → submit → appears in feed; unit tests for offline-queue logic. The camera flow runs end-to-end in CI using Chromium's built-in test media-device flag; the file-picker path covers uploads where no camera exists.
-- GitHub Actions: `lint + typecheck + test` on push; deploy (wrangler + Supabase migrations) on main — wired and ready, runs once credentials exist.
+- GitHub Actions: `lint + typecheck + test` on push; deploy (wrangler + DB migrations) on main — wired and ready, runs once credentials exist.
 - Visual: reduced-motion and focus-state checks in the smoke suite.
 
 ## 14. Phase 1 exit criteria
 
-1. `pnpm dev` runs web + worker + local Supabase together.
+1. `pnpm dev` runs web + worker + local Postgres together.
 2. Email/magic-link signup works; a registered user captures photo/video, auto GPS+timestamp, hashes, uploads through signed URLs, pins the exact location on the map, and the incident renders on map + feed at the pinned point.
 3. Offline capture queues locally and flushes on foreground/online.
 4. Public SSR pages (`/incident/[id]`, feed/map) render approved incidents, indexable, with OG card.
