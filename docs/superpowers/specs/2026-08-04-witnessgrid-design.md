@@ -186,7 +186,7 @@ GET /dataset (CSV/JSON) · GET /embed · GET /supporters · POST /webhooks/billi
 
 1. In-app camera (`getUserMedia`): photo or video — one capture session holds **multiple media items** before submit. If the camera is unavailable or the permission is denied, a **file-picker/gallery upload** offers the same flow. Video compressed client-side (WebM); poster/thumbnail generated client-side (canvas) at capture — **no server-side image processing** (keeps R2/Worker cost £0).
 2. SHA-256 hash computed client-side (WebCrypto) **before** upload. Integrity proof + de-dup key.
-3. `POST /upload` → worker verifies auth + rate limit + **per-media caps** → signed PUT URL → client PUTs original + compressed + thumbnail to R2 under `media/[incident_id]/[hash].[ext]`. R2 bucket has CORS enabled so the browser can PUT directly; the worker sets CORS for the web origin on every response.
+3. `POST /upload` → worker verifies auth + rate limit → signed PUT URL → client PUTs original + compressed + thumbnail to R2 under `media/[incident_id]/[hash].[ext]`. R2 bucket has CORS enabled so the browser can PUT directly; the worker sets CORS for the web origin on every response.
 4. `POST /incident` persists row + media refs. **Phase 1 rule: incidents are auto-approved on creation** (`moderation_status = 'approved'` immediately). When the Phase 3 moderation pipeline ships, new submissions default to `pending` and the auto-approve flag flips off.
 5. GPS + timestamp captured at shutter time. **Pin-location step**: the report flow shows a map with the shutter-time GPS point pre-pinned; the witness drags the pin to the exact spot where the incident occurred (across the street, at a kerb, a doorway) or places a pin manually if GPS was unavailable. The adjusted coordinate becomes the incident's stored point.
 
@@ -196,10 +196,10 @@ GET /dataset (CSV/JSON) · GET /embed · GET /supporters · POST /webhooks/billi
 - **Confirmation checkbox** (required, blocks submit): "I confirm this is my own recording, I have the right to share it, and I am 16 or over. My report stays pseudonymous."
 - **Evidence integrity**: incidents cannot be edited after submit. Withdrawal is the only mutation — the owner deletes via `DELETE /incident/:id` (hard delete of rows + R2 media). Moderation removal (Phase 3) is a soft hide with an audit record; owner-erasure is immediate.
 
-### Storage caps (protect the 10GB free tier)
+### Media sizes
 
-- Per media: image ≤ 25 MB, video ≤ 5 min or 200 MB (client compression targets well under these). Enforced client-side before upload and re-checked by the worker before issuing a signed URL.
-- Per report: ≤ 10 media items.
+- **No per-media or per-report caps** — longer, higher-fidelity recordings preserve context and evidence value. Client-side compression reduces size without shortening recordings.
+- The 10GB free tier is protected by R2 usage alerting (§4), not by upload caps.
 
 ### Offline capture queue
 
