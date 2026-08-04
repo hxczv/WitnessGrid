@@ -122,7 +122,9 @@ Incidents
   id, user_id, type, police_force, location (geography(Point,4326)),
   timestamp, description, officer_count, created_at,
   cluster_id (nullable — populated by Phase 3 clustering), view_count,
-  moderation_status (default pending)
+  moderation_status (default pending),
+  client_id (uuid, unique — idempotency key, queue retries can't double-post),
+  location_accuracy_m (nullable — GPS uncertainty, superseded by the pinned point)
   + generated tsvector column (description, type, police_force) w/ GIN index (Phase 2-ready)
   + GiST index on location
 
@@ -157,6 +159,7 @@ AuditLog                       (Phase 3)
 - **Every mutating endpoint requires a registered session** — including `/upload` and `/incident`.
 - Email is stored for login only; never displayed anywhere.
 - Session via Supabase JWT; the worker verifies JWTs on every protected route.
+- **Phase 1 profile**: username + "my submissions" (list, per-incident view counts, and the delete/withdraw action that powers erasure) + sign out. Guest visitors see a clear "Sign in to report" path on every guarded action (capture, map, feed) — reading stays completely open.
 
 ## 8. API contract
 
@@ -166,11 +169,14 @@ Defined in `packages/contract` (zod request/response schemas); backend implement
 
 ```
 POST /upload            auth → { uploadUrl (signed PUT, 5 min), key, hash }   (stages one media file)
-POST /incident          auth → creates incident + links staged media
+POST /incident          auth → creates incident + links staged media (idempotent via client_id)
 DELETE /incident/:id    auth + owner → deletes incident + cascades R2 media   (withdraw/erasure)
+POST /report            auth → stores a flag against an incident, no public effect in Phase 1
 GET  /incidents         public — filters: bbox, date range, type, police_force; paginated (cursor)
 GET  /incident/:id      public — single approved incident (SSR detail page)
 ```
+
+`POST /report` exists **in Phase 1 even though moderation review doesn't**: incidents are auto-approved, so the register is public immediately and needs a working flag channel (incl. for clearly illegal content that must be takedown-able). Flags queue in the DB; the Phase 3 admin panel reviews them.
 
 ### Deferred endpoints (Phases 2–4)
 
@@ -187,14 +193,24 @@ GET /dataset (CSV/JSON) · GET /embed · GET /supporters · POST /webhooks/billi
 1. In-app camera (`getUserMedia`): photo or video — one capture session holds **multiple media items** before submit. If the camera is unavailable or the permission is denied, a **file-picker/gallery upload** offers the same flow. Video compressed client-side (WebM); poster/thumbnail generated client-side (canvas) at capture — **no server-side image processing** (keeps R2/Worker cost £0).
 2. SHA-256 hash computed client-side (WebCrypto) **before** upload. Integrity proof + de-dup key.
 3. `POST /upload` → worker verifies auth + rate limit → signed PUT URL → client PUTs original + compressed + thumbnail to R2 under `media/[incident_id]/[hash].[ext]`. R2 bucket has CORS enabled so the browser can PUT directly; the worker sets CORS for the web origin on every response.
-4. `POST /incident` persists row + media refs. **Phase 1 rule: incidents are auto-approved on creation** (`moderation_status = 'approved'` immediately). When the Phase 3 moderation pipeline ships, new submissions default to `pending` and the auto-approve flag flips off.
-5. GPS + timestamp captured at shutter time. **Pin-location step**: the report flow shows a map with the shutter-time GPS point pre-pinned; the witness drags the pin to the exact spot where the incident occurred (across the street, at a kerb, a doorway) or places a pin manually if GPS was unavailable. The adjusted coordinate becomes the incident's stored point.
+4. `POST /incident` persists row + media refs, keyed idempotently on a client-generated `client_id` so retried queue flushes never create duplicates. **Phase 1 rule: incidents are auto-approved on creation** (`moderation_status = 'approved'` immediately). When the Phase 3 moderation pipeline ships, new submissions default to `pending` and the auto-approve flag flips off.
+5. GPS + timestamp captured at shutter time. The GPS fix records its **accuracy** (`location_accuracy_m`) as the evidentiary floor. **Pin-location step**: the report flow shows a map with the shutter-time GPS point pre-pinned; the witness drags the pin to the exact spot where the incident occurred (across the street, at a kerb, a doorway) or places a pin manually if GPS was unavailable. The adjusted coordinate becomes the incident's stored point.
+
+### Media serving (read path)
+
+- Signed PUT URLs are **upload-only**. Serving is public read on approved incidents: media objects are exposed through a public R2 route/domain on the worker + CDN cache, only ever linked from `approved` incidents.
+- Content-type allowlist as §10; originals + compressed + thumbnail each served by the same route.
 
 ### Report form (Phase 1)
 
 - `incident_type` (required, enum), `police_force` (required, searchable picker over ~46 forces), `timestamp` (defaults to shutter time, adjustable), `officer_count` (optional int), `collar_number(s)` (optional free-text array), `description` (optional, ≤ 2000 chars), media (1–N items from the capture session).
 - **Confirmation checkbox** (required, blocks submit): "I confirm this is my own recording, I have the right to share it, and I am 16 or over. My report stays pseudonymous."
+- **Witness safety**: the capture flow carries a one-time note — never record from harm's way; record only if you are safe; step back or stop if challenged. No prompt ever pressures continued recording.
 - **Evidence integrity**: incidents cannot be edited after submit. Withdrawal is the only mutation — the owner deletes via `DELETE /incident/:id` (hard delete of rows + R2 media). Moderation removal (Phase 3) is a soft hide with an audit record; owner-erasure is immediate.
+
+### Timestamps
+
+- All times stored in UTC; rendered in the viewer's local timezone. The timecode strip shows UTC as its machine-verified line and the viewer-local time on the page (single source of truth, no ambiguity on the record).
 
 ### Media sizes
 
@@ -211,7 +227,8 @@ GET /dataset (CSV/JSON) · GET /embed · GET /supporters · POST /webhooks/billi
 
 ### View pipeline
 
-- SSR/ISR public pages: feed/map SSR'd for crawlers; `/incident/[id]` SSG/ISR-rendered with `revalidate`.
+- SSR/ISR public pages: feed/map SSR'd for crawlers; `/incident/[id]` SSG/ISR-rendered with `revalidate`. Server components fetch through the worker API — one data path, no second DB connection from the web tier.
+- **Site policies**: `/about` (what this register is + how it works), `/terms`, `/content-policy`, `/privacy` — short plain-language pages, linked from the footer and the report flow.
 - Client hydration: React Query for filter changes; MapLibre GL JS renders clusters (client-side marker clustering on zoom).
 - OG share card per incident via `next/og` `ImageResponse` (free server-side generation; timecode-strip styling).
 - `sitemap.xml` + `robots.txt` for discovery; canonical URLs on public pages.
