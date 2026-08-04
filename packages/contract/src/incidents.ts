@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { INCIDENT_TYPES, MODERATION_STATUSES, POLICE_FORCES } from './enums.js';
+import { INCIDENT_TYPES, MODERATION_STATUSES, POLICE_FORCES } from './enums';
 
 export const MediaTypeSchema = z.enum([
   'image/jpeg',
@@ -8,6 +8,7 @@ export const MediaTypeSchema = z.enum([
   'video/webm',
   'video/mp4',
 ]);
+export type MediaType = z.infer<typeof MediaTypeSchema>;
 
 export const MediaReferenceSchema = z.object({
   key: z.string().min(1),
@@ -47,7 +48,7 @@ export const IncidentSchema = IncidentCreateSchema.extend({
   longitude: z.number(),
   username: z.string(),
 })
-  .omit({ location: true, location_accuracy_m: true })
+  .omit({ location: true })
   .partial({ officer_count: true, collar_numbers: true });
 export type Incident = z.infer<typeof IncidentSchema>;
 

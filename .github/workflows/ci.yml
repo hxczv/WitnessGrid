@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: Install, typecheck, test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install pnpm 9.12.0
+        run: npm install -g pnpm@9.12.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck all workspaces
+        run: pnpm -r typecheck
+
+      - name: Test all workspaces
+        run: pnpm -r test
+
+      - name: Lint backend (if configured)
+        run: pnpm --filter @witnessgrid/backend run --if-present lint
+
+  # Deployment is intentionally disabled for now: no hosting credentials exist yet
+  # (Cloudflare Workers + R2 secrets, hosted Postgres URL). Once credentials exist,
+  # remove the `if: false` guard, add a `workflow_dispatch`/tags trigger and wire the
+  # real deploy steps (wrangler deploy, migrate against the hosted Postgres).
+  deploy:
+    name: Deploy (disabled)
+    if: ${{ false }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy placeholder
+        run: echo "Deployment is disabled — configure cloud credentials before enabling this job."

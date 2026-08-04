@@ -1,0 +1,22 @@
+{
+  "name": "@witnessgrid/infra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "WitnessGrid database migrations, seed data and runner scripts (standalone package).",
+  "scripts": {
+    "migrate": "tsx db/migrate.ts",
+    "migrate:dry": "tsx db/migrate.ts --dry-run",
+    "seed": "tsx db/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test db/migrate.test.ts"
+  },
+  "dependencies": {
+    "postgres": "^3.4.4",
+    "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.3"
+  }
+}

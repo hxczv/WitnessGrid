@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { REPORT_REASONS } from './enums.js';
+import { REPORT_REASONS } from './enums';
 
 export const ReportFlagCreateSchema = z.object({
   incident_id: z.string().uuid(),

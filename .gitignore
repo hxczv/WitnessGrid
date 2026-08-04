@@ -10,6 +10,9 @@ build/
 .wrangler/
 .vercel/
 .turbo/
+web/tsconfig.tsbuildinfo
+web/public/sw.js
+web/public/swe-worker-*
 
 # Env
 .env

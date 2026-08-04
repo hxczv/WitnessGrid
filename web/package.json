@@ -1,0 +1,46 @@
+{
+  "name": "@witnessgrid/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "icons": "node scripts/gen-icons.mjs"
+  },
+  "dependencies": {
+    "@protomaps/basemaps": "^5.7.2",
+    "@tanstack/react-query": "^5",
+    "@witnessgrid/contract": "workspace:*",
+    "idb": "^8",
+    "lucide-react": "^1.28.0",
+    "maplibre-gl": "^4",
+    "next": "^15",
+    "pmtiles": "^3",
+    "react": "^19",
+    "react-dom": "^19",
+    "supercluster": "^8",
+    "zod": "^3",
+    "zustand": "^5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@serwist/next": "^9.5.12",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^26.1.2",
+    "@types/pngjs": "^6.0.5",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@types/supercluster": "^7.1.3",
+    "pngjs": "^7.0.0",
+    "serwist": "^9.5.12",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^3"
+  }
+}

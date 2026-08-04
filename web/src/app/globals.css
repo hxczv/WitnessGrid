@@ -1,0 +1,208 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #12151c;
+  --surface: #1a1e27;
+  --paper: #e8e6de;
+  --amber: #e8a33d;
+  --verified: #4f8c7d;
+  --flag: #c24a3d;
+  --line: #2a2f3a;
+  color-scheme: dark;
+}
+
+@theme {
+  --color-ink: var(--ink);
+  --color-surface: var(--surface);
+  --color-paper: var(--paper);
+  --color-amber: var(--amber);
+  --color-verified: var(--verified);
+  --color-flag: var(--flag);
+  --color-line: var(--line);
+
+  --font-sans: var(--font-atkinson);
+  --font-display: var(--font-archivo);
+  --font-mono: var(--font-plex);
+}
+
+/* Light theme: --paper is the light-mode background, --ink the text.
+   The semantic tokens flip so components keep their meaning. */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --ink: #e8e6de;
+    --paper: #12151c;
+    --surface: #f7f5ee;
+    --line: #d9d6cb;
+    --amber: #b97f1e;
+    --verified: #3f7265;
+    --flag: #a63a2e;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--font-atkinson), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--amber);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+
+  input,
+  select,
+  textarea {
+    color-scheme: dark;
+  }
+}
+
+@layer components {
+  /* Machine-verified facts: mono strip with wide tracking. */
+  .timecode {
+    font-family: var(--font-plex), ui-monospace, monospace;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* Sillitoe tartan checkerboard divider / loading motif. */
+  .tartan {
+    height: 8px;
+    background-image: repeating-conic-gradient(
+      var(--amber) 0% 25%,
+      var(--ink) 0% 50%
+    );
+    background-size: 16px 16px;
+  }
+
+  .tartan-thin {
+    height: 4px;
+    background-image: repeating-conic-gradient(
+      var(--amber) 0% 25%,
+      var(--ink) 0% 50%
+    );
+    background-size: 12px 12px;
+  }
+
+  .hairline {
+    border-color: var(--line);
+  }
+
+  .panel {
+    background: color-mix(in srgb, var(--surface) 86%, transparent);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.625rem 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--paper);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+  }
+
+  .btn:hover {
+    border-color: var(--amber);
+  }
+
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: var(--amber);
+    border-color: var(--amber);
+    color: var(--ink);
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.08);
+  }
+
+  .btn-danger {
+    background: color-mix(in srgb, var(--flag) 16%, var(--surface));
+    border-color: color-mix(in srgb, var(--flag) 55%, transparent);
+    color: var(--flag);
+  }
+
+  .field {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--line);
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 0.95rem;
+  }
+
+  .field:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 1px;
+  }
+
+  .label {
+    display: block;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--paper) 65%, transparent);
+    margin-bottom: 0.4rem;
+  }
+
+  .check {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    cursor: pointer;
+  }
+
+  .check input {
+    margin-top: 0.3rem;
+    width: 1.15rem;
+    height: 1.15rem;
+    accent-color: var(--amber);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

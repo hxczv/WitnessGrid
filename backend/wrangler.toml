@@ -1,0 +1,21 @@
+name = "witnessgrid-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Placeholders — override secrets via .dev.vars locally and real values in
+# Cloudflare dashboard / CI secrets in production.
+[vars]
+PUBLIC_ORIGIN = "https://witnessgrid.app"
+BASE_URL = "https://witnessgrid-api.<account>.workers.dev"
+JWT_SECRET = "replace-with-at-least-32-char-random-secret"
+DATABASE_URL = "postgres://user:password@host/database"
+OBJECT_STORE = "r2"
+LOCAL_MEDIA_DIR = "./.media"
+EMAIL_FROM = "WitnessGrid <noreply@witnessgrid.app>"
+MAGIC_LINK_TTL_MINUTES = "15"
+PLATFORM = "workers"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "witnessgrid-media"

@@ -1,0 +1,47 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "types": [
+      "node",
+      "vitest/globals"
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "allowJs": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "public/sw.js",
+    "playwright-report",
+    "test-results",
+    "coverage",
+    "src/sw",
+    "serwist.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts"
+  ]
+}
