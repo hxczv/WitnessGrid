@@ -44,7 +44,7 @@ WitnessGrid/
 
 ### Runtime topology (local dev)
 
-`web` (Next) → HTTP → `backend` (wrangler dev) → local Supabase (Docker, PostGIS) + local R2 emulator + local Redis (Upstash-compatible). All credentials via placeholder env vars; `.env.example` documents each.
+`supabase start` (Docker) serves Postgres + PostGIS + Auth (magic-link emails land in the local **Inbucket** inbox). `wrangler dev` emulates R2 and the Worker. Local Redis via Docker (`redis-stack`) behind a dev-only flag, `ioredis` on Upstash in prod. Web and worker hit each other with CORS configured for `localhost` and the deployed web origin. All credentials via placeholder env vars; `.env.example` documents each. A **seed script** populates a set of realistic UK incidents so the map and register render without manual data.
 
 ### Production topology (£0)
 
@@ -165,10 +165,11 @@ Defined in `packages/contract` (zod request/response schemas); backend implement
 ### Phase 1 endpoints
 
 ```
-POST /upload          auth → { uploadUrl (signed PUT, 5 min), key, hash }   (stages one media file)
-POST /incident        auth → creates incident + links staged media
-GET  /incidents       public — filters: bbox, date range, type, police_force; paginated (cursor)
-GET  /incident/:id    public — single incident (SSR detail page)
+POST /upload            auth → { uploadUrl (signed PUT, 5 min), key, hash }   (stages one media file)
+POST /incident          auth → creates incident + links staged media
+DELETE /incident/:id    auth + owner → deletes incident + cascades R2 media   (withdraw/erasure)
+GET  /incidents         public — filters: bbox, date range, type, police_force; paginated (cursor)
+GET  /incident/:id      public — single approved incident (SSR detail page)
 ```
 
 ### Deferred endpoints (Phases 2–4)
@@ -183,11 +184,22 @@ GET /dataset (CSV/JSON) · GET /embed · GET /supporters · POST /webhooks/billi
 
 ### Capture → upload (core Phase 1 pipeline)
 
-1. In-app camera (`getUserMedia`): photo or video. Video compressed client-side (WebM); poster/thumbnail generated client-side (canvas) at capture — **no server-side image processing** (keeps R2/Worker cost £0).
+1. In-app camera (`getUserMedia`): photo or video — one capture session holds **multiple media items** before submit. If the camera is unavailable or the permission is denied, a **file-picker/gallery upload** offers the same flow. Video compressed client-side (WebM); poster/thumbnail generated client-side (canvas) at capture — **no server-side image processing** (keeps R2/Worker cost £0).
 2. SHA-256 hash computed client-side (WebCrypto) **before** upload. Integrity proof + de-dup key.
-3. `POST /upload` → worker verifies auth + rate limit → signed PUT URL → client PUTs original + compressed + thumbnail to R2 under `media/[incident_id]/[hash].[ext]`.
+3. `POST /upload` → worker verifies auth + rate limit + **per-media caps** → signed PUT URL → client PUTs original + compressed + thumbnail to R2 under `media/[incident_id]/[hash].[ext]`. R2 bucket has CORS enabled so the browser can PUT directly; the worker sets CORS for the web origin on every response.
 4. `POST /incident` persists row + media refs. **Phase 1 rule: incidents are auto-approved on creation** (`moderation_status = 'approved'` immediately). When the Phase 3 moderation pipeline ships, new submissions default to `pending` and the auto-approve flag flips off.
 5. GPS + timestamp captured at shutter time. **Pin-location step**: the report flow shows a map with the shutter-time GPS point pre-pinned; the witness drags the pin to the exact spot where the incident occurred (across the street, at a kerb, a doorway) or places a pin manually if GPS was unavailable. The adjusted coordinate becomes the incident's stored point.
+
+### Report form (Phase 1)
+
+- `incident_type` (required, enum), `police_force` (required, searchable picker over ~46 forces), `timestamp` (defaults to shutter time, adjustable), `officer_count` (optional int), `collar_number(s)` (optional free-text array), `description` (optional, ≤ 2000 chars), media (1–N items from the capture session).
+- **Confirmation checkbox** (required, blocks submit): "I confirm this is my own recording, I have the right to share it, and I am 16 or over. My report stays pseudonymous."
+- **Evidence integrity**: incidents cannot be edited after submit. Withdrawal is the only mutation — the owner deletes via `DELETE /incident/:id` (hard delete of rows + R2 media). Moderation removal (Phase 3) is a soft hide with an audit record; owner-erasure is immediate.
+
+### Storage caps (protect the 10GB free tier)
+
+- Per media: image ≤ 25 MB, video ≤ 5 min or 200 MB (client compression targets well under these). Enforced client-side before upload and re-checked by the worker before issuing a signed URL.
+- Per report: ≤ 10 media items.
 
 ### Offline capture queue
 
@@ -202,13 +214,15 @@ GET /dataset (CSV/JSON) · GET /embed · GET /supporters · POST /webhooks/billi
 - SSR/ISR public pages: feed/map SSR'd for crawlers; `/incident/[id]` SSG/ISR-rendered with `revalidate`.
 - Client hydration: React Query for filter changes; MapLibre GL JS renders clusters (client-side marker clustering on zoom).
 - OG share card per incident via `next/og` `ImageResponse` (free server-side generation; timecode-strip styling).
+- `sitemap.xml` + `robots.txt` for discovery; canonical URLs on public pages.
+- Missing/withdrawn/removed incidents render a consistent "record not available" page (no 404 leak of existence) — with a `410`-style signal appropriate to crawlers.
 - Lazy-load media: `loading="lazy"` + CDN caching, R2 egress free.
 
 ## 10. Security
 
-- HTTPS everywhere; signed R2 upload URLs (5-min expiry, object-level, no public-write bucket).
+- HTTPS everywhere; signed R2 upload URLs (5-min expiry, object-level, no public-write bucket). R2 bucket CORS + worker CORS scoped to the web origin.
 - JWT auth on all mutations; Redis-backed rate limiting (Upstash) on mutating endpoints + honeypot field on report form.
-- RLS on every table; audit log (Phase 3) for moderator actions.
+- RLS on every table; owner-scoped delete enforced server-side; audit log (Phase 3) for moderator actions.
 - Media hash verification on download paths; content-type allowlist for uploads (image/jpeg, image/png, image/webp, video/webm, video/mp4).
 
 ## 11. Privacy & legal guardrails (UK GDPR / DPA)
@@ -217,6 +231,9 @@ GET /dataset (CSV/JSON) · GET /embed · GET /supporters · POST /webhooks/billi
 - Report form collects nothing personal beyond what the witness chooses to describe; no phone-number harvesting (form validation discourages, moderation removes).
 - Location is stored as a **single incident point**: one coordinate per incident, pre-filled from shutter-time GPS and adjustments the witness makes by dragging the pin to the exact spot (a pin can also be placed manually if GPS was unavailable). The app never samples position in the background, never records a trail of your movements, and does not use continuous/geofence location. No geo data is stored about account sessions — the only locations stored are incident points and saved-area polygons you explicitly draw on the map.
 - Moderation pipeline (Phase 3): report → review → remove; removal cascades to R2 objects.
+- **Owner erasure, immediately**: any user can delete their own incidents (`DELETE /incident/:id`), hard-removing rows + R2 media. This is the Phase 1 right-to-erasure path; full account deletion ships later.
+- **Age requirement**: only people 16 or over may submit (confirmation checkbox). Content stays English-only in Phase 1.
+- **Retention**: media is retained while visible; withdrawn/removed media is purged. The register holds no billing, analytics-beacon, or third-party-tracker data (Cloudflare Web Analytics is cookieless).
 - Hashes are integrity metadata, not personal data.
 - Guest browsing leaves no account trail.
 
@@ -228,7 +245,7 @@ Lazy-loaded media, CDN caching, paginated feeds, background/queued uploads, clie
 
 - `packages/contract`: zod schema tests.
 - `backend`: vitest — handler tests with mocked repo; integration tests against local Supabase.
-- `web`: Playwright smoke — signup → capture → submit → appears in feed; unit tests for offline-queue logic.
+- `web`: Playwright smoke — signup → capture → submit → appears in feed; unit tests for offline-queue logic. Camera in CI runs against a **mocked media stream** (Playwright grants permission + a fake device); the file-picker upload path is the covered fallback where the camera can't be emulated.
 - GitHub Actions: `lint + typecheck + test` on push; deploy (wrangler + Supabase migrations) on main — wired and ready, runs once credentials exist.
 - Visual: reduced-motion and focus-state checks in the smoke suite.
 
