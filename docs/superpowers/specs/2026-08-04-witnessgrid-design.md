@@ -88,6 +88,9 @@ An **evidence register, not a social feed** — verified public record, precise 
 - Incident detail = timecode-strip header band → media → narrative body.
 - Dashboard = desktop sidebar → mobile bottom nav (Phase 2).
 
+### Report flow
+Capture → **Pin location** (drag the pre-pinned GPS point to the exact spot, or place manually) → Fill form → Submit. Ratings join the flow in Phase 2.
+
 ### Signature elements
 - **Timecode strip**: monospace dashcam-style burned-in metadata bar, identical on every card/header/detail: `14:32:07 · 03 AUG · MET POLICE · 51.50,-0.12 · #a91f…`
 - **Sillitoe tartan**: UK police cap-band checkerboard as structural divider / loading motif.
@@ -184,7 +187,7 @@ GET /dataset (CSV/JSON) · GET /embed · GET /supporters · POST /webhooks/billi
 2. SHA-256 hash computed client-side (WebCrypto) **before** upload. Integrity proof + de-dup key.
 3. `POST /upload` → worker verifies auth + rate limit → signed PUT URL → client PUTs original + compressed + thumbnail to R2 under `media/[incident_id]/[hash].[ext]`.
 4. `POST /incident` persists row + media refs. **Phase 1 rule: incidents are auto-approved on creation** (`moderation_status = 'approved'` immediately). When the Phase 3 moderation pipeline ships, new submissions default to `pending` and the auto-approve flag flips off.
-5. GPS + timestamp captured at shutter time; burned into the timecode strip.
+5. GPS + timestamp captured at shutter time. **Pin-location step**: the report flow shows a map with the shutter-time GPS point pre-pinned; the witness drags the pin to the exact spot where the incident occurred (across the street, at a kerb, a doorway) or places a pin manually if GPS was unavailable. The adjusted coordinate becomes the incident's stored point.
 
 ### Offline capture queue
 
@@ -212,7 +215,7 @@ GET /dataset (CSV/JSON) · GET /embed · GET /supporters · POST /webhooks/billi
 
 - Pseudonymous by default: no email on profiles; email login-only, never rendered.
 - Report form collects nothing personal beyond what the witness chooses to describe; no phone-number harvesting (form validation discourages, moderation removes).
-- Location is stored as a single incident point only: one GPS coordinate captured at the moment you capture or submit. The app never samples position in the background, never records a trail of your movements, and does not use continuous/geofence location. No geo data is stored about account sessions — the only locations stored are incident points and saved-area polygons you explicitly draw on the map.
+- Location is stored as a **single incident point**: one coordinate per incident, pre-filled from shutter-time GPS and adjustments the witness makes by dragging the pin to the exact spot (a pin can also be placed manually if GPS was unavailable). The app never samples position in the background, never records a trail of your movements, and does not use continuous/geofence location. No geo data is stored about account sessions — the only locations stored are incident points and saved-area polygons you explicitly draw on the map.
 - Moderation pipeline (Phase 3): report → review → remove; removal cascades to R2 objects.
 - Hashes are integrity metadata, not personal data.
 - Guest browsing leaves no account trail.
@@ -232,7 +235,7 @@ Lazy-loaded media, CDN caching, paginated feeds, background/queued uploads, clie
 ## 14. Phase 1 exit criteria
 
 1. `pnpm dev` runs web + worker + local Supabase together.
-2. Email/magic-link signup works; a registered user captures photo/video, auto GPS+timestamp, hashes, uploads through signed URLs, and the incident renders on map + feed.
+2. Email/magic-link signup works; a registered user captures photo/video, auto GPS+timestamp, hashes, uploads through signed URLs, pins the exact location on the map, and the incident renders on map + feed at the pinned point.
 3. Offline capture queues locally and flushes on foreground/online.
 4. Public SSR pages (`/incident/[id]`, feed/map) render approved incidents, indexable, with OG card.
 5. PWA installs on mobile; `storage.persist` requested; reduced-motion + focus states pass.
