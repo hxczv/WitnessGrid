@@ -212,7 +212,7 @@ GET /dataset (CSV/JSON) · GET /embed · GET /supporters · POST /webhooks/billi
 
 - Pseudonymous by default: no email on profiles; email login-only, never rendered.
 - Report form collects nothing personal beyond what the witness chooses to describe; no phone-number harvesting (form validation discourages, moderation removes).
-- Incident GPS point only — no movement tracking, no continuous location.
+- Location is stored as a single incident point only: one GPS coordinate captured at the moment you capture or submit. The app never samples position in the background, never records a trail of your movements, and does not use continuous/geofence location. No geo data is stored about account sessions — the only locations stored are incident points and saved-area polygons you explicitly draw on the map.
 - Moderation pipeline (Phase 3): report → review → remove; removal cascades to R2 objects.
 - Hashes are integrity metadata, not personal data.
 - Guest browsing leaves no account trail.
