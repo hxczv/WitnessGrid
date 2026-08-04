@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+out/
+dist/
+build/
+.wrangler/
+.vercel/
+.turbo/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+
+# Test / coverage
+coverage/
+playwright-report/
+test-results/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
