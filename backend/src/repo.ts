@@ -43,7 +43,7 @@ interface OfficerRow {
   collar_number: string;
 }
 
-function isPostgresError(err: unknown): err is { code: string } {
+function isPostgresError(err: unknown): err is { code: string; constraint_name?: string } {
   return (
     typeof err === 'object' &&
     err !== null &&
@@ -198,7 +198,18 @@ export async function createIncident(input: IncidentCreate, userId: string): Pro
     // rely on the unique client_id constraint to guarantee idempotency.
     return await run(db);
   } catch (err) {
-    translateUniqueViolation(err, 'an incident with this client_id already exists');
+    if (isPostgresError(err) && err.code === '23505') {
+      if (err.constraint_name === 'incidents_client_id_key') {
+        throw new ApiError(errorCodes.CONFLICT, 'an incident with this client_id already exists');
+      }
+      if (err.constraint_name === 'media_sha256_key') {
+        throw new ApiError(
+          errorCodes.VALIDATION,
+          'media with this content hash has already been recorded',
+        );
+      }
+    }
+    throw err;
   }
 }
 

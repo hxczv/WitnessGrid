@@ -36,10 +36,7 @@ const serwist = new Serwist({
       }),
     },
     {
-      matcher: ({ url }) =>
-        url.hostname.includes("protomaps") ||
-        url.hostname.includes("pmtiles") ||
-        url.hostname.includes("basemaps"),
+      matcher: ({ url }) => url.hostname.includes("tile.openstreetmap.org"),
       method: "GET",
       handler: new CacheFirst({
         cacheName: "wg-tiles",

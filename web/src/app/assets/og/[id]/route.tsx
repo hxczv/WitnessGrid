@@ -63,8 +63,7 @@ export async function GET(_req: Request, { params }: Props) {
               marginTop: 24,
               width: 120,
               height: 8,
-              background: "repeating-conic-gradient(#E8A33D 0% 25%, #12151C 0% 50%)",
-              backgroundSize: "16px 16px",
+              background: "#E8A33D",
             }}
           />
           <div

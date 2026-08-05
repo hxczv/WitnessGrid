@@ -1,8 +1,8 @@
 import { expect, type Page } from "@playwright/test";
 import fs from "node:fs";
-import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-export const DEV_MAIL_LOG = path.resolve(__dirname, "../../backend/.dev-mail.log");
+export const DEV_MAIL_LOG = fileURLToPath(new URL("../../backend/.dev-mail.log", import.meta.url));
 
 export function latestTokenFor(email: string): string {
   if (!fs.existsSync(DEV_MAIL_LOG)) {
@@ -13,7 +13,7 @@ export function latestTokenFor(email: string): string {
     const line = lines[i];
     if (!line) continue;
     if (!line.includes(email)) continue;
-    const m = line.match(/token=([^&=]+)/);
+    const m = line.match(/token=([0-9a-f]+)/);
     if (m?.[1]) return decodeURIComponent(m[1]);
   }
   throw new Error(`no magic link found for ${email} in ${DEV_MAIL_LOG}`);

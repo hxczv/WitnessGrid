@@ -2,8 +2,6 @@
 
 import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { layers, namedFlavor } from "@protomaps/basemaps";
-import { Protocol } from "pmtiles";
 import Supercluster from "supercluster";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -19,29 +17,12 @@ import {
 } from "@/lib/contract";
 import { defaultDateRange, typeLabel } from "@/lib/time";
 import { StatusBanner } from "@/components/status-banner";
-import { MAP_TILES_URL } from "@/lib/map-tiles";
+import { baseMapStyle } from "@/lib/map-tiles";
 
 const EMPTY_FC: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
   features: [],
 };
-
-function buildStyle(tilesUrl: string): maplibregl.StyleSpecification {
-  return {
-    version: 8,
-    glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
-    sprite: "https://protomaps.github.io/basemaps-assets/sprites/v4/dark",
-    sources: {
-      protomaps: {
-        type: "vector",
-        url: `pmtiles://${tilesUrl}`,
-        attribution:
-          '© <a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
-      },
-    },
-    layers: layers("protomaps", namedFlavor("dark"), { lang: "en" }),
-  };
-}
 
 interface Filters {
   type: IncidentType | "";
@@ -104,11 +85,9 @@ export function MapView() {
     const container = containerRef.current;
     if (!container) return;
 
-    const protocol = new Protocol();
-    maplibregl.addProtocol("pmtiles", protocol.tile);
     const map = new maplibregl.Map({
       container,
-      style: buildStyle(MAP_TILES_URL),
+      style: baseMapStyle(),
       center: [-2.8, 54.2],
       zoom: 5.5,
       attributionControl: { compact: true },
@@ -191,7 +170,6 @@ export function MapView() {
     return () => {
       if (debounce) clearTimeout(debounce);
       map.remove();
-      maplibregl.removeProtocol("pmtiles");
       mapRef.current = null;
     };
   }, [fetchVisible, router]);

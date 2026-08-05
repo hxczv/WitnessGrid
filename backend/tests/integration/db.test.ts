@@ -33,6 +33,9 @@ describe.skipIf(!enabled)('db integration', () => {
     return { user, token };
   }
 
+  const randomHash = () =>
+    Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, '0')).join('');
+
   function incidentPayload(overrides: Partial<IncidentCreate> = {}): IncidentCreate {
     return {
       incident_type: 'arrest',
@@ -44,7 +47,7 @@ describe.skipIf(!enabled)('db integration', () => {
         {
           key: `media/${crypto.randomUUID()}/clip.jpg`,
           type: 'image/jpeg',
-          hash: 'a'.repeat(64),
+          hash: randomHash(),
           thumbnail_key: null,
         },
       ],

@@ -29,6 +29,7 @@ authRoutes.post('/auth/magic-link', magicLinkRateLimit, jsonBodyLimit, async (c)
     } catch (err) {
       if (!(err instanceof ApiError && err.code === errorCodes.CONFLICT)) throw err;
       user = await getUserByEmail(email);
+      if (!user) throw err;
     }
   }
   if (!user) throw new ApiError(errorCodes.STORAGE, 'could not resolve account');

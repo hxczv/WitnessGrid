@@ -83,12 +83,15 @@ CREATE TABLE incidents (
   created_at timestamptz NOT NULL DEFAULT now(),
   view_count integer NOT NULL DEFAULT 0,
   cluster_id uuid,
-  moderation_status moderation_status NOT NULL DEFAULT 'approved',
-  moderation_tsv tsvector GENERATED ALWAYS AS (to_tsvector('english', description || ' ' || type::text || ' ' || police_force::text)) STORED
+  moderation_status moderation_status NOT NULL DEFAULT 'approved'
 );
 CREATE INDEX incidents_location_idx ON incidents USING gist (location);
-CREATE INDEX incidents_tsv_idx ON incidents USING gin (moderation_tsv);
 CREATE INDEX incidents_created_idx ON incidents (moderation_status, created_at DESC);
+-- NOTE: the Phase 1 schema intentionally has no generated moderation_tsv column.
+-- PostgreSQL 18 rejects enum-derived expressions in GENERATED ALWAYS columns
+-- (42P17), and full-text search is a Phase 2 feature; the Phase 2 search
+-- migration will add a tsvector column computed in SQL, not as a generated
+-- expression.
 
 CREATE TABLE media (
   id uuid PRIMARY KEY,

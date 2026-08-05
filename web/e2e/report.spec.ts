@@ -1,16 +1,24 @@
 import { expect, test } from "@playwright/test";
-import path from "node:path";
+import { PNG } from "pngjs";
 import { signIn } from "./helpers";
 
 test("a signed-in witness can file a record and it enters the register", async ({ page }) => {
   const email = `e2e-report-${Date.now()}@example.com`;
-  await signIn(page, email, "e2e_reporter");
+  const username = `reporter_${Date.now().toString(36)}`;
+  await signIn(page, email, username);
 
   await page.goto("/report");
   await expect(page.getByRole("heading", { name: /report an encounter/i })).toBeVisible();
 
-  // Step 1 — capture: upload a fixture image (equivalent path to camera photo).
-  await page.locator('input[type="file"]').setInputFiles(path.resolve(__dirname, "fixtures/pixel.png"));
+  // Step 1 — capture: upload a unique image (equivalent path to camera photo).
+  // The media table de-dups on content hash, so every run needs fresh bytes.
+  const img = new PNG({ width: 8, height: 8 });
+  for (let i = 0; i < img.data.length; i++) img.data[i] = Math.floor(Math.random() * 256);
+  await page.locator('input[type="file"]').setInputFiles({
+    name: `capture_${Date.now()}.png`,
+    mimeType: "image/png",
+    buffer: PNG.sync.write(img),
+  });
   await expect(page.getByLabel(/attachment 1/i)).toBeVisible();
 
   // Step 2 — pin: click the map to place the pin.
@@ -30,5 +38,5 @@ test("a signed-in witness can file a record and it enters the register", async (
   const label = incidentType.replaceAll("_", " ");
   await page.goto("/");
   await expect(page.getByText(label, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText("e2e_reporter")).toBeVisible();
+  await expect(page.getByText(username)).toBeVisible();
 });

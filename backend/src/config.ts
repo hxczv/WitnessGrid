@@ -4,7 +4,11 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   PUBLIC_ORIGIN: z.string().min(1, 'PUBLIC_ORIGIN is required'),
-  BASE_URL: z.string().min(1).default('http://localhost:8787'),
+  BASE_URL: z
+    .string()
+    .min(1)
+    .default('http://localhost:8787')
+    .transform((v) => (/^https?:\/\//.test(v) ? v : 'http://localhost:8787')),
   OBJECT_STORE: z.enum(['local', 'r2']).default('local'),
   LOCAL_MEDIA_DIR: z.string().min(1).default('./.media'),
   R2_ACCOUNT_ID: z.string().optional(),

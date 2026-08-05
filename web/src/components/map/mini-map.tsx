@@ -2,27 +2,8 @@
 
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { layers, namedFlavor } from "@protomaps/basemaps";
-import { Protocol } from "pmtiles";
 import { useEffect, useRef } from "react";
-import { MAP_TILES_URL } from "@/lib/map-tiles";
-
-function buildStyle(): maplibregl.StyleSpecification {
-  return {
-    version: 8,
-    glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
-    sprite: "https://protomaps.github.io/basemaps-assets/sprites/v4/dark",
-    sources: {
-      protomaps: {
-        type: "vector",
-        url: `pmtiles://${MAP_TILES_URL}`,
-        attribution:
-          '© <a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
-      },
-    },
-    layers: layers("protomaps", namedFlavor("dark"), { lang: "en" }),
-  };
-}
+import { baseMapStyle } from "@/lib/map-tiles";
 
 export function MiniMap({ latitude, longitude }: { latitude: number; longitude: number }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -30,11 +11,9 @@ export function MiniMap({ latitude, longitude }: { latitude: number; longitude: 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const protocol = new Protocol();
-    maplibregl.addProtocol("pmtiles", protocol.tile);
     const map = new maplibregl.Map({
       container,
-      style: buildStyle(),
+      style: baseMapStyle(),
       center: [longitude, latitude],
       zoom: 14,
       interactive: false,
@@ -55,7 +34,6 @@ export function MiniMap({ latitude, longitude }: { latitude: number; longitude: 
     });
     return () => {
       map.remove();
-      maplibregl.removeProtocol("pmtiles");
     };
   }, [latitude, longitude]);
 

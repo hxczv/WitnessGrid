@@ -1,16 +1,14 @@
 "use client";
 
-import { layers, namedFlavor } from "@protomaps/basemaps";
 import { Camera, Check, ImagePlus, LocateFixed, MapPin, RotateCcw, ShieldAlert, Upload, Video, X } from "lucide-react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
-import { Protocol } from "pmtiles";
 import { useEffect, useRef, useState } from "react";
 import { INCIDENT_TYPES, POLICE_FORCES, type IncidentType, type MediaType, type PoliceForce } from "@/lib/contract";
 import { makeFlushApi } from "@/lib/app-flush";
 import { makeThumbnail, normalizeMediaType, sha256Hex, startClipRecorder, stopMediaStream, takePhoto, type ClipRecorder } from "@/lib/media";
-import { MAP_TILES_URL } from "@/lib/map-tiles";
+import { baseMapStyle } from "@/lib/map-tiles";
 import { createSubmissionQueue, flushQueue, type QueuedMedia, type QueuedSubmission } from "@/lib/offline-queue";
 import { getSessionToken } from "@/lib/session";
 import { useAuthStore } from "@/store/auth";
@@ -55,23 +53,6 @@ function parseCollarNumbers(raw: string): string[] {
     .slice(0, 5);
 }
 
-function buildStyle(): maplibregl.StyleSpecification {
-  return {
-    version: 8,
-    glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
-    sprite: "https://protomaps.github.io/basemaps-assets/sprites/v4/dark",
-    sources: {
-      protomaps: {
-        type: "vector",
-        url: `pmtiles://${MAP_TILES_URL}`,
-        attribution:
-          '© <a href="https://protomaps.com">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
-      },
-    },
-    layers: layers("protomaps", namedFlavor("dark"), { lang: "en" }),
-  };
-}
-
 function PinMap({ pin, onPin }: { pin: Pin | null; onPin: (p: Pin) => void }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pinRef = useRef<Pin | null>(pin);
@@ -80,11 +61,9 @@ function PinMap({ pin, onPin }: { pin: Pin | null; onPin: (p: Pin) => void }) {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const protocol = new Protocol();
-    maplibregl.addProtocol("pmtiles", protocol.tile);
     const map = new maplibregl.Map({
       container,
-      style: buildStyle(),
+      style: baseMapStyle(),
       center: [pinRef.current?.lon ?? -1.5, pinRef.current?.lat ?? 52.7],
       zoom: pinRef.current ? 14 : 5.5,
       attributionControl: { compact: true },
@@ -120,7 +99,6 @@ function PinMap({ pin, onPin }: { pin: Pin | null; onPin: (p: Pin) => void }) {
     return () => {
       marker?.remove();
       map.remove();
-      maplibregl.removeProtocol("pmtiles");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -318,22 +296,22 @@ export function ReportWizard() {
       created_at: Date.now(),
     };
 
-    const queue = createSubmissionQueue();
-    try {
-      await queue.enqueue(submission);
-      const sessionToken = getSessionToken();
-      if (sessionToken) {
-        const result = await flushQueue(queue, makeFlushApi(sessionToken), sessionToken);
-        if (result.submitted.includes(clientId)) {
-          setDone({ offline: false });
-          return;
+      const queue = createSubmissionQueue();
+      try {
+        await queue.enqueue(submission);
+        const sessionToken = getSessionToken();
+        if (sessionToken) {
+          const result = await flushQueue(queue, makeFlushApi(sessionToken), sessionToken);
+          if (result.submitted.includes(clientId) || result.dropped.includes(clientId)) {
+            setDone({ offline: false });
+            return;
+          }
         }
+        setDone({ offline: true });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not save the report.");
+        setBusy(false);
       }
-      setDone({ offline: true });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the report.");
-      setBusy(false);
-    }
   };
 
   if (done) {

@@ -14,14 +14,12 @@
     "icons": "node scripts/gen-icons.mjs"
   },
   "dependencies": {
-    "@protomaps/basemaps": "^5.7.2",
     "@tanstack/react-query": "^5",
     "@witnessgrid/contract": "workspace:*",
     "idb": "^8",
     "lucide-react": "^1.28.0",
     "maplibre-gl": "^4",
     "next": "^15",
-    "pmtiles": "^3",
     "react": "^19",
     "react-dom": "^19",
     "supercluster": "^8",

@@ -1,10 +1,18 @@
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DATABASE_URL = 'postgres://postgres:postgres@localhost:5432/witnessgrid';
+
+// 1x1 placeholder image written to each seeded media key so the local object
+// store can serve dev media without a real upload. Same content everywhere;
+// the sha256 column is only a de-dup key, not a content check.
+const PLACEHOLDER_IMAGE = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
 
 async function main(): Promise<void> {
   const url = process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
@@ -29,6 +37,22 @@ async function main(): Promise<void> {
       await tx.unsafe(seedText);
     });
     console.log(`Seed applied (${seedPath}).`);
+
+    const mediaRows = await sql<
+      { url: string; thumbnail_url: string | null }[]
+    >`SELECT url, thumbnail_url FROM media WHERE url LIKE 'records/%'`;
+    const mediaDir = process.env.LOCAL_MEDIA_DIR
+      ? path.resolve(process.env.LOCAL_MEDIA_DIR)
+      : path.resolve(__dirname, '../../backend/.media');
+    for (const row of mediaRows) {
+      for (const key of [row.url, row.thumbnail_url]) {
+        if (!key) continue;
+        const filePath = path.join(mediaDir, ...key.split('/'));
+        await mkdir(path.dirname(filePath), { recursive: true });
+        await writeFile(filePath, PLACEHOLDER_IMAGE);
+      }
+    }
+    console.log(`Materialised ${mediaRows.length} seed media objects under ${mediaDir}.`);
   } catch (err) {
     console.error('Seed failed. If tables are missing, run `pnpm migrate` from the infra package first.');
     console.error(err);
