@@ -40,6 +40,7 @@ export function FeedFiltersBar({ initialFilters }: { initialFilters: FeedFilters
         <input
           className="field"
           type="search"
+          data-testid="feed-search"
           autoComplete="off"
           placeholder="Describe, police number, hash…"
           value={q}

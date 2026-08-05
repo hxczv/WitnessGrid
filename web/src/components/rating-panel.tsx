@@ -11,8 +11,6 @@ const AXES = [
   { key: "safety", label: "Safety" },
 ] as const;
 
-const EMPTY_SCORES = { appropriateness: 0, professionalism: 0, safety: 0 };
-
 export function RatingPanel({
   incidentId,
   ownerUserId,
@@ -42,19 +40,20 @@ export function RatingPanel({
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["incident", incidentId] }),
   });
 
-  if (isOwner || !summary) return null;
+  if (isOwner) return null;
+  const count = summary?.count ?? 0;
 
   return (
     <section aria-label="Ratings" className="mb-8 rounded-md border hairline bg-surface/60 p-5">
       <h2 className="label">Ratings</h2>
       <p className="mt-1 text-sm text-paper/60">
-        {summary.count === 0
+        {count === 0
           ? "No ratings yet."
-          : `Averaged from ${summary.count} rating${summary.count === 1 ? "" : "s"}.`}
+          : `Averaged from ${count} rating${count === 1 ? "" : "s"}.`}
       </p>
       {AXES.map(({ key, label }) => {
-        const mine = summary.my?.[key] ?? null;
-        const avg = summary[`${key}_avg`];
+        const mine = summary?.my?.[key] ?? null;
+        const avg = summary?.[`${key}_avg`] ?? null;
         return (
           <div key={key} className="mt-3">
             <div className="flex items-baseline justify-between">
@@ -72,9 +71,15 @@ export function RatingPanel({
                   aria-checked={mine === n}
                   aria-label={`${label}: ${n} of 5${mine === n ? " (your rating)" : ""}`}
                   disabled={!token || rate.isPending}
-                  onClick={() =>
-                    rate.mutate({ ...(summary.my ?? EMPTY_SCORES), [key]: n })
-                  }
+                  onClick={() => {
+                    const mine = summary?.my;
+                    rate.mutate({
+                      appropriateness: mine ? mine.appropriateness : n,
+                      professionalism: mine ? mine.professionalism : n,
+                      safety: mine ? mine.safety : n,
+                      [key]: n,
+                    });
+                  }}
                   className={`h-11 w-11 rounded-md border hairline font-mono text-sm ${
                     mine !== null && n <= mine
                       ? "border-amber bg-amber/15 text-amber"

@@ -15,7 +15,7 @@ ratingRoutes.get('/ratings/:incidentId', optionalAuth, async (c) => {
   return c.json(await getRatingSummary(incidentId, c.get('userId') ?? null));
 });
 
-ratingRoutes.put('/ratings/:incidentId', requireAuth, mutateRateLimit, jsonBodyLimit, async (c) => {
+ratingRoutes.patch('/ratings/:incidentId', requireAuth, mutateRateLimit, jsonBodyLimit, async (c) => {
   const userId = c.get('userId');
   if (!userId) throw new ApiError(errorCodes.UNAUTHORIZED, 'authentication required');
   const incidentId = c.req.param('incidentId');

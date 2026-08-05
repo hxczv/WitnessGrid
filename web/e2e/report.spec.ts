@@ -37,6 +37,8 @@ test("a signed-in witness can file a record and it enters the register", async (
   // The record now appears in the public feed.
   const label = incidentType.replaceAll("_", " ");
   await page.goto("/");
-  await expect(page.getByText(label, { exact: false }).first()).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByRole("region", { name: /register pages/i }).getByText(label, { exact: false }).first(),
+  ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(username)).toBeVisible();
 });

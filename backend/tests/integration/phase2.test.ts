@@ -117,7 +117,7 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
       const id = (await (await postIncident(owner.token, incidentPayload())).json()).id;
 
       const first = await app.request(`http://localhost:8787/ratings/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: jsonHeaders(rater.token),
         body: JSON.stringify({ appropriateness: 3, professionalism: 4, safety: 2 }),
       });
@@ -130,7 +130,7 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
       expect(body.incident.id).toBe(id);
 
       const update = await app.request(`http://localhost:8787/ratings/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: jsonHeaders(rater.token),
         body: JSON.stringify({ appropriateness: 5, professionalism: 5, safety: 5 }),
       });
@@ -151,12 +151,47 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
       expect((await asRater.json()).my.professionalism).toBe(5);
     });
 
+    it('attaches the rating summary to the incident detail', async () => {
+      const owner = await makeUser('rate_det_owner');
+      const rater = await makeUser('rate_det_rater');
+      const id = (await (await postIncident(owner.token, incidentPayload())).json()).id;
+
+      const before = await app.request(`http://localhost:8787/incident/${id}`);
+      const beforeBody = await before.json();
+      expect(beforeBody.rating_summary).toBeUndefined();
+
+      await app.request(`http://localhost:8787/ratings/${id}`, {
+        method: 'PATCH',
+        headers: jsonHeaders(rater.token),
+        body: JSON.stringify({ appropriateness: 4, professionalism: 3, safety: 5 }),
+      });
+
+      const guest = await app.request(`http://localhost:8787/incident/${id}`);
+      const guestBody = await guest.json();
+      expect(guestBody.rating_summary.count).toBe(1);
+      expect(guestBody.rating_summary.appropriateness_avg).toBe(4);
+      expect(guestBody.rating_summary.my).toBeNull();
+
+      const asRater = await app.request(`http://localhost:8787/incident/${id}`, {
+        headers: jsonHeaders(rater.token),
+      });
+      const raterBody = await asRater.json();
+      expect(raterBody.rating_summary.my).toEqual(
+        expect.objectContaining({ appropriateness: 4, professionalism: 3, safety: 5 }),
+      );
+
+      const asOwner = await app.request(`http://localhost:8787/incident/${id}`, {
+        headers: jsonHeaders(owner.token),
+      });
+      expect((await asOwner.json()).rating_summary.my).toBeNull();
+    });
+
     it('rejects rating your own incident', async () => {
       const { token } = await makeUser('rate_self');
       const id = (await (await postIncident(token, incidentPayload())).json()).id;
 
       const res = await app.request(`http://localhost:8787/ratings/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: jsonHeaders(token),
         body: JSON.stringify({ appropriateness: 4, professionalism: 4, safety: 4 }),
       });
@@ -169,14 +204,14 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
       const id = (await (await postIncident(token, incidentPayload())).json()).id;
 
       const anon = await app.request(`http://localhost:8787/ratings/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: jsonHeaders(),
         body: JSON.stringify({ appropriateness: 4, professionalism: 4, safety: 4 }),
       });
       expect(anon.status).toBe(401);
 
       const bad = await app.request(`http://localhost:8787/ratings/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: jsonHeaders(token),
         body: JSON.stringify({ appropriateness: 9, professionalism: 4, safety: 4 }),
       });
@@ -186,7 +221,7 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
     it('returns 404 for a missing incident', async () => {
       const { token } = await makeUser('rate_missing');
       const res = await app.request(`http://localhost:8787/ratings/${crypto.randomUUID()}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: jsonHeaders(token),
         body: JSON.stringify({ appropriateness: 4, professionalism: 4, safety: 4 }),
       });
@@ -400,13 +435,13 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
       const bystanderIncident = (await (await postIncident(bystander.token, incidentPayload())).json()).id;
 
       const rateRes = await app.request(`http://localhost:8787/ratings/${rated}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: jsonHeaders(rater.token),
         body: JSON.stringify({ appropriateness: 2, professionalism: 3, safety: 4 }),
       });
       expect(rateRes.status).toBe(200);
       const victimRating = await app.request(`http://localhost:8787/ratings/${bystanderIncident}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: jsonHeaders(victim.token),
         body: JSON.stringify({ appropriateness: 5, professionalism: 5, safety: 5 }),
       });
