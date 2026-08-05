@@ -1,12 +1,23 @@
 import {
   ApiErrorSchema,
   IncidentSchema,
+  ListAlertsResultSchema,
   ListIncidentsResultSchema,
+  RatingSummarySchema,
+  SavedAreaSchema,
+  StatsMeSchema,
+  StatsPublicSchema,
   type Incident,
+  type ListAlertsResult,
   type ListIncidentsQuery,
   type ListIncidentsResult,
+  type RatingSummary,
+  type SavedArea,
   type Session,
   type SessionUser,
+  type StatsMe,
+  type StatsPeriod,
+  type StatsPublic,
 } from "@/lib/contract";
 
 export const DEFAULT_API_BASE_URL = "http://localhost:8787";
@@ -125,6 +136,23 @@ export function apiDelete<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   return requestJson<T>(path, { method: "DELETE", cache: "no-store" }, opts);
 }
 
+export function apiPatch<T>(
+  path: string,
+  body: unknown,
+  opts: ApiOptions = {},
+): Promise<T> {
+  return requestJson<T>(
+    path,
+    {
+      method: "PATCH",
+      body: JSON.stringify(body),
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    },
+    opts,
+  );
+}
+
 /**
  * PUT a blob to an absolute upload URL (signed PUT target returned by
  * `POST /upload`). The backend supplies the required headers.
@@ -200,4 +228,85 @@ export async function listMyIncidents(
     opts,
   );
   return parseOrThrow<ListIncidentsResult>(ListIncidentsResultSchema, data);
+}
+
+export interface IncidentRating {
+  incident_id: string;
+  appropriateness: number;
+  professionalism: number;
+  safety: number;
+}
+
+/** A detail-page incident bundled with its rating summary. */
+export type IncidentDetail = Incident & { rating: RatingSummary };
+
+export async function getIncidentRatingSummary(
+  incidentId: string,
+  opts: ApiOptions = {},
+): Promise<RatingSummary> {
+  const data = await apiGet<unknown>(`/ratings/${encodeURIComponent(incidentId)}`, opts);
+  return parseOrThrow<RatingSummary>(RatingSummarySchema, data);
+}
+
+export async function rateIncident(
+  incidentId: string,
+  scores: { appropriateness: number; professionalism: number; safety: number },
+  opts: ApiOptions = {},
+): Promise<{ incident: Incident | null; summary: RatingSummary }> {
+  const data = await apiPatch<unknown>(
+    `/ratings/${encodeURIComponent(incidentId)}`,
+    scores,
+    opts,
+  );
+  const payload = data as { incident?: unknown; summary?: unknown };
+  const parsed = RatingSummarySchema.safeParse(payload.summary);
+  if (!parsed.success) {
+    throw new ApiClientError(0, "unknown_error", "Malformed API response payload");
+  }
+  return {
+    incident: (payload.incident as Incident | undefined) ?? null,
+    summary: parsed.data,
+  };
+}
+
+export async function listSavedAreas(opts: ApiOptions = {}): Promise<SavedArea[]> {
+  const data = await apiGet<unknown>("/saved-areas", opts);
+  return (data as unknown[]).map((item) => {
+    const parsed = SavedAreaSchema.safeParse(item);
+    if (!parsed.success) {
+      throw new ApiClientError(0, "unknown_error", "Malformed API response payload");
+    }
+    return parsed.data;
+  });
+}
+
+export async function createSavedArea(
+  input: { name: string; polygon: [number, number][] },
+  opts: ApiOptions = {},
+): Promise<SavedArea> {
+  const data = await apiPost<unknown>("/saved-areas", input, opts);
+  return parseOrThrow<SavedArea>(SavedAreaSchema, data);
+}
+
+export async function deleteSavedArea(id: string, opts: ApiOptions = {}): Promise<{ ok: boolean }> {
+  return apiDelete<{ ok: boolean }>(`/saved-areas/${encodeURIComponent(id)}`, opts);
+}
+
+export async function listAlerts(opts: ApiOptions = {}): Promise<ListAlertsResult> {
+  const data = await apiGet<unknown>("/alerts", opts);
+  return parseOrThrow<ListAlertsResult>(ListAlertsResultSchema, data);
+}
+
+export async function getStatsPublic(period: StatsPeriod = "30d", opts: ApiOptions = {}): Promise<StatsPublic> {
+  const data = await apiGet<unknown>(`/stats?period=${period}`, opts);
+  return parseOrThrow<StatsPublic>(StatsPublicSchema, data);
+}
+
+export async function getStatsMe(opts: ApiOptions = {}): Promise<StatsMe> {
+  const data = await apiGet<unknown>("/stats/me", opts);
+  return parseOrThrow<StatsMe>(StatsMeSchema, data);
+}
+
+export async function deleteAccount(opts: ApiOptions = {}): Promise<{ ok: boolean }> {
+  return apiDelete<{ ok: boolean }>("/auth/me", opts);
 }

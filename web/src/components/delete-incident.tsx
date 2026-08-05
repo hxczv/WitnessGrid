@@ -6,7 +6,7 @@ import { useState } from "react";
 import { apiDelete } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 
-export function DeleteIncident({ incidentId, ownerUserId }: { incidentId: string; ownerUserId: string }) {
+export function DeleteIncident({ incidentId, ownerUserId }: { incidentId: string; ownerUserId: string | null }) {
   const router = useRouter();
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
@@ -14,7 +14,7 @@ export function DeleteIncident({ incidentId, ownerUserId }: { incidentId: string
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!token || !user || user.id !== ownerUserId) return null;
+  if (!token || !user || ownerUserId === null || user.id !== ownerUserId) return null;
 
   const deleteIt = async () => {
     setBusy(true);

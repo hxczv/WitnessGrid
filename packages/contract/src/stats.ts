@@ -5,6 +5,7 @@ export const StatsQuerySchema = z.object({
   period: z.enum(['30d', '90d', 'all']).default('30d'),
 });
 export type StatsQuery = z.infer<typeof StatsQuerySchema>;
+export type StatsPeriod = StatsQuery['period'];
 
 export const StatsPublicSchema = z.object({
   total_incidents: z.number().int().nonnegative(),
