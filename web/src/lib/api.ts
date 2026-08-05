@@ -201,9 +201,19 @@ export async function listIncidents(
   return parseOrThrow<ListIncidentsResult>(ListIncidentsResultSchema, data);
 }
 
-export async function getIncident(id: string, opts: ApiOptions = {}): Promise<Incident> {
+/** A detail-page incident bundled with its rating summary (when one exists). */
+export type IncidentDetail = Incident & { rating_summary?: RatingSummary };
+
+export async function getIncident(id: string, opts: ApiOptions = {}): Promise<IncidentDetail> {
   const data = await apiGet<unknown>(`/incident/${encodeURIComponent(id)}`, opts);
-  return parseOrThrow<Incident>(IncidentSchema, data);
+  const incident = parseOrThrow<Incident>(IncidentSchema, data);
+  const ratingRaw = (data as { rating_summary?: unknown }).rating_summary;
+  if (ratingRaw === undefined) return incident;
+  const parsed = RatingSummarySchema.safeParse(ratingRaw);
+  if (!parsed.success) {
+    throw new ApiClientError(0, "unknown_error", "Malformed API response payload");
+  }
+  return { ...incident, rating_summary: parsed.data };
 }
 
 export async function requestMagicLink(email: string, username?: string): Promise<{ ok: boolean }> {
@@ -236,9 +246,6 @@ export interface IncidentRating {
   professionalism: number;
   safety: number;
 }
-
-/** A detail-page incident bundled with its rating summary. */
-export type IncidentDetail = Incident & { rating: RatingSummary };
 
 export async function getIncidentRatingSummary(
   incidentId: string,

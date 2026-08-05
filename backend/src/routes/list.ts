@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { ListIncidentsQuerySchema } from '@witnessgrid/contract';
 import { ApiError, errorCodes, validationError } from '../errors.js';
 import { optionalAuth, requireAuth } from '../middleware/auth.js';
-import { getIncident, listIncidents, listUserIncidents } from '../repo.js';
+import { getIncident, getRatingSummary, listIncidents, listUserIncidents } from '../repo.js';
 import type { AppEnv } from '../env.js';
 
 export const listRoutes = new Hono<AppEnv>();
@@ -26,5 +26,7 @@ listRoutes.get('/incident/:id', optionalAuth, async (c) => {
   if (!id) throw new ApiError(errorCodes.NOT_FOUND, 'incident not found');
   const incident = await getIncident(id, c.get('userId') ?? null);
   if (!incident) throw new ApiError(errorCodes.NOT_FOUND, 'incident not found');
-  return c.json(incident);
+  const summary = await getRatingSummary(id, c.get('userId') ?? null);
+  const body = summary.count > 0 ? { ...incident, rating_summary: summary } : incident;
+  return c.json(body);
 });

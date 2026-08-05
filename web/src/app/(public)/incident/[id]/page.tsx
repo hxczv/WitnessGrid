@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import nextDynamic from "next/dynamic";
 import { notFound } from "next/navigation";
-import { getIncident, serverApiBaseUrl } from "@/lib/api";
+import { getIncident, serverApiBaseUrl, type IncidentDetail } from "@/lib/api";
 import { formatForce, type Incident } from "@/lib/contract";
 import { formatLocal, formatUTC, hash8, incidentTimecodeParts, typeLabel } from "@/lib/time";
 import { DeleteIncident } from "@/components/delete-incident";
 import { MediaGallery } from "@/components/media-gallery";
+import { RatingPanel } from "@/components/rating-panel";
 import { ReportIncident } from "@/components/report-incident";
 import { Tartan } from "@/components/tartan";
 import { Timecode } from "@/components/timecode";
@@ -18,7 +19,7 @@ const MiniMap = nextDynamic(() => import("@/components/map/mini-map").then((m) =
   ),
 });
 
-async function fetchIncident(id: string): Promise<Incident | null> {
+async function fetchIncident(id: string): Promise<IncidentDetail | null> {
   try {
     return await getIncident(id, { baseUrl: serverApiBaseUrl() });
   } catch {
@@ -98,10 +99,19 @@ export default async function IncidentPage({ params }: Props) {
           {incident.description || "No description was recorded with this submission."}
         </p>
         <p className="mt-3 text-sm text-paper/60">
-          Reported by <span className="timecode text-amber">@{incident.username}</span> ·{" "}
-          {formatLocal(incident.created_at)}
+          Reported by{" "}
+          <span className="timecode text-amber">
+            {incident.username ? `@${incident.username}` : "anonymous witness"}
+          </span>{" "}
+          · {formatLocal(incident.created_at)}
         </p>
       </section>
+
+      <RatingPanel
+        incidentId={incident.id}
+        ownerUserId={incident.user_id}
+        serverSummary={incident.rating_summary ?? null}
+      />
 
       <section aria-label="Record facts" className="mb-8">
         <h2 className="label">Record facts</h2>

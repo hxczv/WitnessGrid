@@ -4,6 +4,7 @@ import {
   apiPatch,
   buildQuery,
   deleteAccount,
+  getIncident,
   isApiError,
   listIncidents,
   rateIncident,
@@ -135,6 +136,72 @@ describe("rateIncident", () => {
     await expect(
       rateIncident("inc", { appropriateness: 4, professionalism: 3, safety: 5 }),
     ).rejects.toBeInstanceOf(ApiClientError);
+  });
+});
+
+describe("getIncident", () => {
+  const baseIncident = {
+    id: "6e8f5e69-5a21-4f1e-9a2a-4b2b2c2d2e2f",
+    client_id: "6e8f5e69-5a21-4f1e-9a2a-4b2b2c2d2e2e",
+    user_id: "6e8f5e69-5a21-4f1e-9a2a-4b2b2c2d2e2a",
+    username: "witness",
+    incident_type: "stop_and_search",
+    police_force: "metropolitan",
+    timestamp: "2026-01-02T03:04:05.000Z",
+    description: "A stop in the park.",
+    officer_count: 1,
+    collar_numbers: [],
+    created_at: "2026-01-02T03:04:05.000Z",
+    view_count: 7,
+    moderation_status: "approved",
+    longitude: -0.12,
+    latitude: 51.5,
+    media: [
+      {
+        key: "media/a.jpeg",
+        type: "image/jpeg",
+        hash: "a".repeat(64),
+        thumbnail_key: "media/a-thumb.jpeg",
+      },
+    ],
+    location_accuracy_m: null,
+  };
+
+  it("passes through a rating_summary when present", async () => {
+    const summary = {
+      incident_id: "6e8f5e69-5a21-4f1e-9a2a-4b2b2c2d2e2f",
+      count: 3,
+      appropriateness_avg: 4,
+      professionalism_avg: 3.5,
+      safety_avg: 5,
+      my: null,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ ...baseIncident, rating_summary: summary }),
+      })),
+    );
+
+    const result = await getIncident("inc");
+    expect(result.rating_summary?.count).toBe(3);
+    expect(result.username).toBe("witness");
+  });
+
+  it("omits rating_summary when absent", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => baseIncident,
+      })),
+    );
+
+    const result = await getIncident("inc");
+    expect(result.rating_summary).toBeUndefined();
   });
 });
 
