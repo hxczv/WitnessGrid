@@ -40,13 +40,13 @@ export type IncidentCreate = z.infer<typeof IncidentCreateSchema>;
 
 export const IncidentSchema = IncidentCreateSchema.extend({
   id: z.string().uuid(),
-  user_id: z.string().uuid(),
+  user_id: z.string().uuid().nullable(),
   created_at: z.string().datetime(),
   view_count: z.number().int().nonnegative(),
   moderation_status: z.enum(MODERATION_STATUSES),
   latitude: z.number(),
   longitude: z.number(),
-  username: z.string(),
+  username: z.string().nullable(),
 })
   .omit({ location: true })
   .partial({ officer_count: true, collar_numbers: true });
@@ -61,6 +61,7 @@ export const ListIncidentsQuerySchema = z.object({
   endDate: z.string().datetime().optional(),
   type: z.enum(INCIDENT_TYPES).optional(),
   policeForce: z.enum(POLICE_FORCES).optional(),
+  q: z.string().max(200).optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(25),
 });

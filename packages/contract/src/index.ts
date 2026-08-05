@@ -3,4 +3,8 @@ export * from './incidents';
 export * from './media';
 export * from './auth';
 export * from './report';
+export * from './rating';
+export * from './saved-areas';
+export * from './alerts';
+export * from './stats';
 export * from './errors';
