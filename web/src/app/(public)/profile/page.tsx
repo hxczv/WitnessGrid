@@ -5,7 +5,9 @@ import { Camera, LogOut, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { listMyIncidents } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
+import { AlertsList } from "@/components/alerts-list";
 import { RegisterList } from "@/components/register-row";
+import { SavedAreasManager } from "@/components/saved-areas-manager";
 import { StatsMeSection } from "@/components/stats-me";
 import { StatusBanner } from "@/components/status-banner";
 
@@ -83,6 +85,8 @@ export default function ProfilePage() {
       </div>
 
       <StatsMeSection token={token} />
+      <SavedAreasManager token={token} />
+      <AlertsList token={token} />
     </main>
   );
 }

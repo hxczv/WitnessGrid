@@ -16,6 +16,9 @@ import {
   type PoliceForce,
 } from "@/lib/contract";
 import { defaultDateRange, typeLabel } from "@/lib/time";
+import { addVertex, closeRing, isClosed, removeLastVertex, type LngLat } from "@/lib/polygon";
+import { useAuthStore } from "@/store/auth";
+import { SavedAreaDialog } from "@/components/saved-area-dialog";
 import { StatusBanner } from "@/components/status-banner";
 import { baseMapStyle } from "@/lib/map-tiles";
 
@@ -49,6 +52,21 @@ export function MapView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [listOpen, setListOpen] = useState(true);
+  const [drawing, setDrawing] = useState(false);
+  const [polygon, setPolygon] = useState<LngLat[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const drawingRef = useRef(false);
+  drawingRef.current = drawing;
+  const polygonRef = useRef(polygon);
+  polygonRef.current = polygon;
+  const vertexMarkersRef = useRef<maplibregl.Marker[]>([]);
+  const user = useAuthStore((s) => s.user);
+
+  const cancelDraw = () => {
+    setDrawing(false);
+    setPolygon([]);
+    setDialogOpen(false);
+  };
 
   const fetchVisible = useCallback(async () => {
     const map = mapRef.current;
@@ -142,6 +160,29 @@ export function MapView() {
         },
       });
 
+      map.addSource("polygon-draft", { type: "geojson", data: EMPTY_FC });
+      map.addLayer({
+        id: "polygon-draft-fill",
+        type: "fill",
+        source: "polygon-draft",
+        paint: { "fill-color": "#E8A33D", "fill-opacity": 0.25 },
+      });
+      map.addLayer({
+        id: "polygon-draft-line",
+        type: "line",
+        source: "polygon-draft",
+        paint: { "line-color": "#E8A33D", "line-width": 2 },
+      });
+
+      map.on("click", (e) => {
+        if (!drawingRef.current) return;
+        const hit = map.queryRenderedFeatures(e.point, {
+          layers: ["incident-point", "incident-cluster"],
+        });
+        if (hit.length > 0) return;
+        setPolygon((prev) => addVertex(prev, [e.lngLat.lng, e.lngLat.lat]));
+      });
+
       map.on("click", "incident-cluster", (e) => {
         const feature = e.features?.[0];
         if (!feature || feature.geometry.type !== "Point") return;
@@ -203,6 +244,46 @@ export function MapView() {
     );
     (source as GeoJSONSource).setData({ type: "FeatureCollection", features: clusters });
   }, [incidents]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const source = map.getSource("polygon-draft");
+    if (!source || source.type !== "geojson") return;
+
+    const closed = closeRing(polygon);
+    let features: GeoJSON.Feature[] = [];
+    if (polygon.length >= 3) {
+      features = [
+        { type: "Feature", geometry: { type: "Polygon", coordinates: [closed] }, properties: {} },
+        { type: "Feature", geometry: { type: "LineString", coordinates: closed }, properties: {} },
+      ];
+    } else if (polygon.length >= 2) {
+      features = [
+        { type: "Feature", geometry: { type: "LineString", coordinates: polygon }, properties: {} },
+      ];
+    }
+    (source as GeoJSONSource).setData(
+      features.length > 0
+        ? { type: "FeatureCollection", features }
+        : EMPTY_FC,
+    );
+  }, [polygon]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    for (const marker of vertexMarkersRef.current) marker.remove();
+    vertexMarkersRef.current = [];
+    if (!drawing || !map) return;
+    const points = isClosed(polygon) ? polygon.slice(0, -1) : polygon;
+    for (const [lng, lat] of points) {
+      const el = document.createElement("div");
+      el.className = "size-3 rounded-full border-2 border-amber bg-ink/80";
+      vertexMarkersRef.current.push(
+        new maplibregl.Marker({ element: el }).setLngLat({ lng, lat }).addTo(map),
+      );
+    }
+  }, [drawing, polygon]);
 
   return (
     <div className="relative h-full w-full">
@@ -270,6 +351,47 @@ export function MapView() {
             Apply filters
           </button>
         </div>
+        {user ? (
+          drawing ? (
+            <div className="mt-3 border-t hairline pt-3">
+              <p className="timecode mb-2 text-amber">
+                Click the map to place points.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-primary flex-1"
+                  disabled={polygon.length < 3}
+                  onClick={() => setDialogOpen(true)}
+                >
+                  Finish
+                </button>
+                <button type="button" className="btn flex-1" onClick={cancelDraw}>
+                  Cancel
+                </button>
+              </div>
+              <button
+                type="button"
+                className="timecode mt-2 w-full py-1 text-paper/50"
+                onClick={() => setPolygon((p) => removeLastVertex(p))}
+                disabled={polygon.length === 0}
+              >
+                undo last point ({polygon.length})
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn mt-3 w-full border-dashed"
+              onClick={() => {
+                setPolygon([]);
+                setDrawing(true);
+              }}
+            >
+              Save this area
+            </button>
+          )
+        ) : null}
       </div>
 
       {loading ? (
@@ -324,6 +446,14 @@ export function MapView() {
           ) : null}
         </div>
       </div>
+
+      {dialogOpen ? (
+        <SavedAreaDialog
+          polygon={polygon}
+          onClose={cancelDraw}
+          onSaved={cancelDraw}
+        />
+      ) : null}
     </div>
   );
 }
