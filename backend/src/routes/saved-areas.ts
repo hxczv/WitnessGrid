@@ -3,7 +3,7 @@ import { SavedAreaCreateSchema } from '@witnessgrid/contract';
 import { ApiError, errorCodes, validationError } from '../errors.js';
 import { jsonBodyLimit } from '../middleware/body-limit.js';
 import { requireAuth } from '../middleware/auth.js';
-import { mutateRateLimit } from '../rate-limit.js';
+import { mutateRateLimit, savedAreaRateLimit } from '../rate-limit.js';
 import { createSavedArea, deleteSavedArea, listAlerts, listSavedAreas } from '../repo.js';
 import type { AppEnv } from '../env.js';
 
@@ -15,7 +15,7 @@ savedAreaRoutes.get('/saved-areas', requireAuth, async (c) => {
   return c.json(await listSavedAreas(userId));
 });
 
-savedAreaRoutes.post('/saved-areas', requireAuth, mutateRateLimit, jsonBodyLimit, async (c) => {
+savedAreaRoutes.post('/saved-areas', requireAuth, savedAreaRateLimit, jsonBodyLimit, async (c) => {
   const userId = c.get('userId');
   if (!userId) throw new ApiError(errorCodes.UNAUTHORIZED, 'authentication required');
 

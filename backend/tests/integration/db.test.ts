@@ -16,6 +16,9 @@ console.log(
 
 describe.skipIf(!enabled)('db integration', () => {
   const runId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  // Deleted accounts leave their incidents behind (user_id SET NULL), so the
+  // suite cleans up those orphans on exit as well.
+  const runStartedAt = new Date();
   const createdUsers: string[] = [];
 
   const emailFor = (label: string) => `it_${runId}_${label}@example.com`;
@@ -80,6 +83,7 @@ describe.skipIf(!enabled)('db integration', () => {
     if (createdUsers.length > 0) {
       await db`DELETE FROM users WHERE id IN ${db(createdUsers)}`;
     }
+    await db`DELETE FROM incidents WHERE user_id IS NULL AND created_at >= ${runStartedAt}`;
     await db.end();
   });
 

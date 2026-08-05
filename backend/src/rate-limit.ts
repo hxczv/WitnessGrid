@@ -40,6 +40,14 @@ export const mutateRateLimit = rateLimit({
   key: (c) => c.get('userId') ?? 'anonymous',
 });
 
+// Saved areas are created in bulk (up to 10 at once), so the shared mutation
+// budget would trip on a normal onboarding flow.
+export const savedAreaRateLimit = rateLimit({
+  max: 30,
+  windowMs: 10_000,
+  key: (c) => c.get('userId') ?? 'anonymous',
+});
+
 export const magicLinkRateLimit = rateLimit({
   max: 20,
   windowMs: 10_000,

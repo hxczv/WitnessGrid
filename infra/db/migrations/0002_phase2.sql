@@ -8,6 +8,7 @@
 -- The table is empty at this point in the deployment history, so the NOT NULL
 -- column is added directly.
 ALTER TABLE ratings ADD COLUMN user_id uuid REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE ratings ADD COLUMN created_at timestamptz NOT NULL DEFAULT now();
 ALTER TABLE ratings ALTER COLUMN user_id SET NOT NULL;
 ALTER TABLE ratings ADD CONSTRAINT ratings_user_incident_unique UNIQUE (user_id, incident_id);
 CREATE INDEX ratings_incident_idx ON ratings(incident_id);

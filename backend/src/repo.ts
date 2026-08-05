@@ -87,6 +87,7 @@ async function fireAreaAlerts(
     FROM saved_areas sa
     JOIN users u ON u.id = sa.user_id
     WHERE ST_Intersects(sa.bounds, (SELECT location FROM incidents WHERE id = ${incidentId}))
+    ORDER BY u.id, sa.created_at, sa.id
   `;
   const pending: AreaAlertEmail[] = [];
   for (const m of matches) {
@@ -199,11 +200,12 @@ export async function createIncident(input: IncidentCreate, userId: string): Pro
   const run = async (tx: Db): Promise<Incident> => {
     const tq = tx as unknown as RowQuery;
     const rows = await tq<IncidentBaseRow[]>`
-      INSERT INTO incidents (id, user_id, client_id, type, police_force, location, location_accuracy_m, "timestamp", description, officer_count)
+      INSERT INTO incidents (id, user_id, client_id, type, police_force, location, location_accuracy_m, "timestamp", description, officer_count, moderation_tsv)
       VALUES (
         ${incidentId}, ${userId}, ${input.client_id}, ${input.incident_type}, ${input.police_force},
         ST_SetSRID(ST_MakePoint(${input.location.lon}, ${input.location.lat}), 4326)::geography,
-        ${input.location_accuracy_m ?? null}, ${input.timestamp}, ${input.description}, ${input.officer_count ?? null}
+        ${input.location_accuracy_m ?? null}, ${input.timestamp}, ${input.description}, ${input.officer_count ?? null},
+        to_tsvector('english', coalesce(${input.description}, ''))
       )
       RETURNING id, user_id, client_id, type AS incident_type, police_force, "timestamp", description,
         officer_count, created_at, view_count, moderation_status,
@@ -576,7 +578,12 @@ interface SavedAreaRow {
 }
 
 function toSavedArea(row: SavedAreaRow): SavedArea {
-  const ring = row.geojson.coordinates[0] ?? [];
+  let ring = row.geojson.coordinates[0] ?? [];
+  const first = ring[0];
+  const last = ring[ring.length - 1];
+  if (first && last && first[0] === last[0] && first[1] === last[1]) {
+    ring = ring.slice(0, -1);
+  }
   return {
     id: row.id,
     name: row.name,
@@ -661,11 +668,11 @@ function normalizeAlertIncident(raw: AlertIncidentJson): Incident {
     client_id: raw.client_id,
     incident_type: raw.incident_type as Incident['incident_type'],
     police_force: raw.police_force as Incident['police_force'],
-    timestamp: raw.timestamp,
+    timestamp: new Date(raw.timestamp).toISOString(),
     description: raw.description,
     ...(raw.officer_count !== null && { officer_count: raw.officer_count }),
     media: raw.media,
-    created_at: raw.created_at,
+    created_at: new Date(raw.created_at).toISOString(),
     view_count: raw.view_count,
     moderation_status: raw.moderation_status as Incident['moderation_status'],
     latitude: raw.latitude,

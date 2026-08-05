@@ -7,5 +7,8 @@ export default defineConfig({
     setupFiles: ['tests/setup.ts'],
     testTimeout: 30000,
     hookTimeout: 30000,
+    // Integration suites share one live database and clean up their own data;
+    // parallel files would race each other's cleanup, so run files sequentially.
+    fileParallelism: false,
   },
 });
