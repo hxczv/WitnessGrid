@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { listIncidents, serverApiBaseUrl } from "@/lib/api";
 import type { Incident } from "@/lib/contract";
+import { ListIncidentsQuerySchema } from "@/lib/contract";
+import type { FeedFilters } from "@/lib/feed-filters";
+import { EMPTY_FILTERS } from "@/lib/feed-filters";
+import { FeedFiltersBar } from "@/components/feed-filters";
 import { LoadMore } from "@/components/load-more";
 import { SignInCta } from "@/components/sign-in-cta";
 import { StatusBanner } from "@/components/status-banner";
@@ -14,14 +18,29 @@ export const metadata: Metadata = {
     "The public register of UK police interactions, recorded by witnesses.",
 };
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const parsed = ListIncidentsQuerySchema.safeParse({
+    q: sp.q ?? "",
+    type: sp.type,
+    policeForce: sp.policeForce,
+  });
+  const filters: FeedFilters = parsed.success
+    ? { q: parsed.data.q ?? "", type: parsed.data.type, policeForce: parsed.data.policeForce }
+    : EMPTY_FILTERS;
+  const query = parsed.success ? { ...parsed.data, limit: 25 } : { limit: 25 };
+
   let items: Incident[] = [];
   let nextCursor: string | null = null;
   let error: string | null = null;
   let detail: string | null = null;
 
   try {
-    const res = await listIncidents({ limit: 25 }, { baseUrl: serverApiBaseUrl() });
+    const res = await listIncidents(query, { baseUrl: serverApiBaseUrl() });
     items = res.items;
     nextCursor = res.next_cursor;
   } catch (err) {
@@ -47,13 +66,20 @@ export default async function HomePage() {
 
       <Tartan thin />
 
+      <FeedFiltersBar initialFilters={filters} />
+
       {error ? (
         <div className="py-8">
           <StatusBanner kind="error" message={error} detail={detail ?? undefined} />
         </div>
       ) : null}
 
-      <LoadMore initialItems={items} initialCursor={nextCursor} ssrFailed={Boolean(error)} />
+      <LoadMore
+        initialItems={items}
+        initialCursor={nextCursor}
+        ssrFailed={Boolean(error)}
+        filters={filters}
+      />
 
       <p className="mt-4 px-3 text-xs text-paper/50">
         Reports are the witnesses&apos; own recordings and have not been
