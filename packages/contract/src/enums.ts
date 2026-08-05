@@ -79,7 +79,7 @@ export const REPORT_REASONS = [
 
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
-export function formatForce(force: PoliceForce): string {
+export function formatForce(force: string): string {
   return force
     .split('-')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))

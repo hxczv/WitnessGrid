@@ -9,6 +9,7 @@ export type StatsPeriod = StatsQuery['period'];
 
 export const StatsPublicSchema = z.object({
   total_incidents: z.number().int().nonnegative(),
+  total_views: z.number().int().nonnegative(),
   by_type: z.array(
     z.object({
       type: z.enum(INCIDENT_TYPES),

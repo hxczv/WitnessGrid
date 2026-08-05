@@ -330,6 +330,7 @@ describe('Stats schemas', () => {
     expect(
       StatsPublicSchema.safeParse({
         total_incidents: 12,
+        total_views: 480,
         by_type: [{ type: 'arrest', count: 4 }],
         by_force: [{ force: 'other', count: 2 }],
         series_30d: [{ day: '2026-08-01', count: 3 }],
@@ -342,6 +343,7 @@ describe('Stats schemas', () => {
     expect(
       StatsPublicSchema.safeParse({
         total_incidents: 12,
+        total_views: 0,
         by_type: [],
         by_force: [],
         series_30d: [],
@@ -354,6 +356,7 @@ describe('Stats schemas', () => {
     expect(
       StatsPublicSchema.safeParse({
         total_incidents: 1,
+        total_views: 0,
         by_type: [{ type: 'riot', count: 1 }],
         by_force: [],
         series_30d: [],

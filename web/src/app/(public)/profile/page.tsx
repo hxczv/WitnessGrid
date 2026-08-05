@@ -6,6 +6,7 @@ import Link from "next/link";
 import { listMyIncidents } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import { RegisterList } from "@/components/register-row";
+import { StatsMeSection } from "@/components/stats-me";
 import { StatusBanner } from "@/components/status-banner";
 
 export default function ProfilePage() {
@@ -80,6 +81,8 @@ export default function ProfilePage() {
           <RegisterList incidents={incidents} />
         )}
       </div>
+
+      <StatsMeSection token={token} />
     </main>
   );
 }
