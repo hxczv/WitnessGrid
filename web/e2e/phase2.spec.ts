@@ -30,14 +30,23 @@ test("a signed-in user can rate and replace a rating", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /arrest|supermarket/i }).first()).toBeVisible();
 
   const avgLocator = page.getByTestId("rating-avg-appropriateness");
-  await page.getByRole("radio", { name: /appropriateness: 5 of 5/i }).click();
-  await expect(avgLocator).toContainText("/ 5", { timeout: 15_000 });
-  const afterFive = parseFloat((await avgLocator.innerText()).split("/")[0]!);
+  const panel = page.locator('section[aria-label="Ratings"]');
+  const panelText = await panel.innerText();
+  const lines = panelText.split("\n").map((l) => l.trim());
+  const countMatch = panelText.match(/Averaged from (\d+) rating/);
+  const n0 = countMatch ? parseInt(countMatch[1]!, 10) : 0;
+  const avg0Text = lines[lines.indexOf("APPROPRIATENESS") + 1] ?? "—";
+  const avg0 = avg0Text === "—" ? null : parseFloat(avg0Text);
+  const readAvg = async () => parseFloat((await avgLocator.innerText()).split("/")[0] ?? "0");
 
+  // Replacing our own rating changes the mean deterministically: (sum + v) / (n + 1).
+  const expectedAfterFive = n0 === 0 ? 5 : (avg0! * n0 + 5) / (n0 + 1);
+  await page.getByRole("radio", { name: /appropriateness: 5 of 5/i }).click();
+  await expect.poll(readAvg, { timeout: 15_000 }).toBeCloseTo(expectedAfterFive, 1);
+
+  const expectedAfterOne = (expectedAfterFive * (n0 + 1) - 5 + 1) / (n0 + 1);
   await page.getByRole("radio", { name: /appropriateness: 1 of 5/i }).click();
-  await expect(avgLocator).toContainText("/ 5", { timeout: 15_000 });
-  const afterOne = parseFloat((await avgLocator.innerText()).split("/")[0]!);
-  expect(afterOne).toBeLessThan(afterFive);
+  await expect.poll(readAvg, { timeout: 15_000 }).toBeCloseTo(expectedAfterOne, 1);
 });
 
 test("account deletion anonymizes but keeps the submitted record", async ({ page }) => {
