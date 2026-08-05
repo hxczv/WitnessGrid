@@ -7,8 +7,8 @@ import { sendMagicLink } from '../email.js';
 import { ApiError, errorCodes, validationError } from '../errors.js';
 import { jsonBodyLimit } from '../middleware/body-limit.js';
 import { requireAuth } from '../middleware/auth.js';
-import { magicLinkRateLimit } from '../rate-limit.js';
-import { consumeMagicToken, createUser, getUserByEmail, getUserById } from '../repo.js';
+import { magicLinkRateLimit, mutateRateLimit } from '../rate-limit.js';
+import { consumeMagicToken, createUser, deleteUserAccount, getUserByEmail, getUserById } from '../repo.js';
 import type { AppEnv } from '../env.js';
 
 export const authRoutes = new Hono<AppEnv>();
@@ -61,4 +61,11 @@ authRoutes.get('/auth/me', requireAuth, async (c) => {
   const user = c.get('sessionUser');
   if (!user) throw new ApiError(errorCodes.UNAUTHORIZED, 'authentication required');
   return c.json(user);
+});
+
+authRoutes.delete('/auth/me', requireAuth, mutateRateLimit, async (c) => {
+  const userId = c.get('userId');
+  if (!userId) throw new ApiError(errorCodes.UNAUTHORIZED, 'authentication required');
+  await deleteUserAccount(userId);
+  return c.json({ ok: true });
 });

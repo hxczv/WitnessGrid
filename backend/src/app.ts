@@ -6,6 +6,9 @@ import type { AppEnv } from './env.js';
 import { authRoutes } from './routes/auth.js';
 import { incidentRoutes } from './routes/incidents.js';
 import { listRoutes } from './routes/list.js';
+import { ratingRoutes } from './routes/ratings.js';
+import { savedAreaRoutes } from './routes/saved-areas.js';
+import { statsRoutes } from './routes/stats.js';
 import { uploadRoutes } from './media/upload.js';
 import { mediaServeRoutes } from './media/serve.js';
 
@@ -19,7 +22,7 @@ app.use(
       if (origin === config.PUBLIC_ORIGIN || origin === 'http://localhost:3000') return origin;
       return undefined;
     },
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['content-type', 'authorization', 'x-media-key', 'x-media-token'],
     exposeHeaders: ['retry-after'],
     maxAge: 86400,
@@ -31,6 +34,9 @@ app.get('/', (c) => c.json({ ok: true, service: 'witnessgrid-api' }));
 app.route('/', listRoutes);
 app.route('/', authRoutes);
 app.route('/', incidentRoutes);
+app.route('/', ratingRoutes);
+app.route('/', savedAreaRoutes);
+app.route('/', statsRoutes);
 app.route('/', uploadRoutes);
 app.route('/', mediaServeRoutes);
 

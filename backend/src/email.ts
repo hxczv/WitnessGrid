@@ -32,3 +32,42 @@ export async function sendMagicLink(email: string, url: string): Promise<void> {
     /* dev-mail log is best-effort */
   }
 }
+
+export async function sendAreaAlert(
+  email: string,
+  areaName: string,
+  detailUrl: string,
+): Promise<void> {
+  if (config.RESEND_API_KEY) {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${config.RESEND_API_KEY}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: config.EMAIL_FROM,
+        to: [email],
+        subject: `[area-alert] New incident recorded in "${areaName}"`,
+        text: `A new incident was recorded inside your saved area "${areaName}". Details: ${detailUrl}`,
+        html: `<p>A new incident was recorded inside your saved area <strong>${areaName}</strong>.</p><p><a href="${detailUrl}">${detailUrl}</a></p>`,
+      }),
+    });
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new ApiError(errorCodes.STORAGE, `email provider error ${response.status}: ${body.slice(0, 300)}`);
+    }
+    return;
+  }
+  console.log(`[dev-mail] saved-area alert for ${email}: ${areaName} — ${detailUrl}`);
+  try {
+    const fs = await import('node:fs');
+    const logUrl = new URL('../.dev-mail.log', import.meta.url);
+    fs.appendFileSync(
+      logUrl,
+      `${JSON.stringify({ at: new Date().toISOString(), email, areaName, detailUrl })}\n`,
+    );
+  } catch {
+    /* dev-mail log is best-effort */
+  }
+}
