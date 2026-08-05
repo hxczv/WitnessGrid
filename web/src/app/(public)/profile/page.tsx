@@ -6,6 +6,7 @@ import Link from "next/link";
 import { listMyIncidents } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import { AlertsList } from "@/components/alerts-list";
+import { DeleteAccount } from "@/components/delete-account";
 import { RegisterList } from "@/components/register-row";
 import { SavedAreasManager } from "@/components/saved-areas-manager";
 import { StatsMeSection } from "@/components/stats-me";
@@ -87,6 +88,7 @@ export default function ProfilePage() {
       <StatsMeSection token={token} />
       <SavedAreasManager token={token} />
       <AlertsList token={token} />
+      <DeleteAccount />
     </main>
   );
 }

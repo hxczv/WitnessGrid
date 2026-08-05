@@ -594,6 +594,9 @@ export function ReportWizard() {
 
           <fieldset className="space-y-3 rounded-md border hairline p-4">
             <legend className="label px-1">Before you submit</legend>
+            <p className="text-xs text-paper/50">
+              Submitting waives deletion of this footage once published (see Terms).
+            </p>
             <label className="check">
               <input
                 type="checkbox"

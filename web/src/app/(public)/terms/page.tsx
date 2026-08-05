@@ -57,7 +57,18 @@ export default function TermsPage() {
         </p>
       </Section>
 
-      <Section title="5. No advice, no guarantee">
+      <Section title="5. Public-record retention">
+        <p>
+          By submitting media to WitnessGrid you grant a perpetual, irrevocable
+          right to retain and display it as part of the public register. Uploading
+          waives deletion of that public-record footage. While your account exists
+          you may withdraw an incident (which removes it and its media); account
+          deletion erases your account and personal data but your submitted
+          incidents remain, anonymized.
+        </p>
+      </Section>
+
+      <Section title="6. No advice, no guarantee">
         <p>
           We do not give legal advice. WitnessGrid is provided free and without
           warranty of any kind. To the extent permitted by law we are not liable
@@ -65,7 +76,7 @@ export default function TermsPage() {
         </p>
       </Section>
 
-      <Section title="6. Changes">
+      <Section title="7. Changes">
         <p>
           We may update these terms from time to time. Continued use after changes
           means you accept the new terms.
