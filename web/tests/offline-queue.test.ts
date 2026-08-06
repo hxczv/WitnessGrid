@@ -105,7 +105,7 @@ describe("flushQueue", () => {
     expect(await queue.count()).toBe(1);
   });
 
-  it("stops flushing the queue on an auth failure and keeps the row", async () => {
+  it("keeps rows on auth failure so they flush after sign-in", async () => {
     const queue = fakeQueue();
     const clientId = "55555555-5555-4555-8555-555555555555";
     await queue.enqueue(sampleSubmission(clientId));
@@ -115,6 +115,7 @@ describe("flushQueue", () => {
 
     const result = await flushQueue(queue, api, "token");
 
+    // Not dropped: anonymous drafts wait in the queue until a session exists.
     expect(result.retried).toEqual([clientId]);
     expect(await queue.count()).toBe(1);
   });

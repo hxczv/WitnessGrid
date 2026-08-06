@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import { getIncident, rateIncident } from "@/lib/api";
 import type { RatingSummary } from "@/lib/contract";
 import { useAuthStore } from "@/store/auth";
@@ -10,6 +11,90 @@ const AXES = [
   { key: "professionalism", label: "Professionalism" },
   { key: "safety", label: "Safety" },
 ] as const;
+
+type AxisKey = (typeof AXES)[number]["key"];
+
+// One 1–5 radiogroup. Implements the WAI-ARIA radio pattern: arrow keys move
+// and select, roving tabindex keeps the group at one tab stop.
+function AxisRating({
+  label,
+  mine,
+  disabled,
+  pending,
+  onSelect,
+}: {
+  label: string;
+  mine: number | null;
+  disabled: boolean;
+  pending: boolean;
+  onSelect: (value: number) => void;
+}) {
+  const [focused, setFocused] = useState<number | null>(null);
+  const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const active = mine ?? focused ?? 1;
+
+  const moveTo = (value: number) => {
+    const clamped = Math.min(5, Math.max(1, value));
+    setFocused(clamped);
+    buttonRefs.current[clamped - 1]?.focus();
+    onSelect(clamped);
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent, current: number) => {
+    switch (event.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        event.preventDefault();
+        moveTo(current + 1);
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        event.preventDefault();
+        moveTo(current - 1);
+        break;
+      case "Home":
+        event.preventDefault();
+        moveTo(1);
+        break;
+      case "End":
+        event.preventDefault();
+        moveTo(5);
+        break;
+      default:
+        break;
+    }
+  };
+
+  return (
+    <div className="mt-1 flex gap-1" role="radiogroup" aria-label={label}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          ref={(el) => {
+            buttonRefs.current[n - 1] = el;
+          }}
+          type="button"
+          role="radio"
+          aria-checked={mine === n}
+          aria-label={`${label}: ${n} of 5${mine === n ? " (your rating)" : ""}`}
+          tabIndex={active === n ? 0 : -1}
+          disabled={disabled || pending}
+          onKeyDown={(e) => onKeyDown(e, n)}
+          onFocus={() => setFocused(n)}
+          onClick={() => onSelect(n)}
+          className={`h-11 w-11 rounded-md border hairline font-mono text-sm ${
+            mine !== null && n <= mine
+              ? "border-amber bg-amber/15 text-amber"
+              : "text-paper/60"
+          } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
+        >
+          {n}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function RatingPanel({
   incidentId,
@@ -43,10 +128,20 @@ export function RatingPanel({
   if (isOwner) return null;
   const count = summary?.count ?? 0;
 
+  const select = (key: AxisKey, value: number) => {
+    const existing = summary?.my;
+    rate.mutate({
+      appropriateness: existing ? existing.appropriateness : value,
+      professionalism: existing ? existing.professionalism : value,
+      safety: existing ? existing.safety : value,
+      [key]: value,
+    });
+  };
+
   return (
     <section aria-label="Ratings" className="mb-8 rounded-md border hairline bg-surface/60 p-5">
       <h2 className="label">Ratings</h2>
-      <p className="mt-1 text-sm text-paper/60">
+      <p className="mt-1 text-sm text-paper/70">
         {count === 0
           ? "No ratings yet."
           : `Averaged from ${count} rating${count === 1 ? "" : "s"}.`}
@@ -62,38 +157,17 @@ export function RatingPanel({
                 {avg === null ? "—" : `${avg} / 5`}
               </span>
             </div>
-            <div className="mt-1 flex gap-1" role="radiogroup" aria-label={label}>
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  role="radio"
-                  aria-checked={mine === n}
-                  aria-label={`${label}: ${n} of 5${mine === n ? " (your rating)" : ""}`}
-                  disabled={!token || rate.isPending}
-                  onClick={() => {
-                    const mine = summary?.my;
-                    rate.mutate({
-                      appropriateness: mine ? mine.appropriateness : n,
-                      professionalism: mine ? mine.professionalism : n,
-                      safety: mine ? mine.safety : n,
-                      [key]: n,
-                    });
-                  }}
-                  className={`h-11 w-11 rounded-md border hairline font-mono text-sm ${
-                    mine !== null && n <= mine
-                      ? "border-amber bg-amber/15 text-amber"
-                      : "text-paper/40"
-                  } ${!token ? "cursor-not-allowed opacity-50" : ""}`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
+            <AxisRating
+              label={label}
+              mine={mine}
+              disabled={!token}
+              pending={rate.isPending}
+              onSelect={(value) => select(key, value)}
+            />
           </div>
         );
       })}
-      {!token ? <p className="mt-4 text-xs text-paper/50">Sign in to rate this record.</p> : null}
+      {!token ? <p className="mt-4 text-xs text-paper/60">Sign in to rate this record.</p> : null}
       {rate.isError ? <p className="mt-2 text-xs text-flag">Could not save your rating.</p> : null}
     </section>
   );

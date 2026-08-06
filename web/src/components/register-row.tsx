@@ -16,7 +16,6 @@ function Thumbnail({ incident }: { incident: Incident }) {
     );
   }
   return (
-    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={mediaUrl(thumbKey)}
       alt=""

@@ -45,6 +45,9 @@ export function LoadMore({
 
   return (
     <section aria-label="Register pages" className="mt-2">
+      <p aria-live="polite" className="sr-only">
+        {items.length} record{items.length === 1 ? "" : "s"} shown
+      </p>
       <RegisterList incidents={items} />
       <div className="flex items-center justify-center py-8">
         {isError || (ssrFailed && items.length === 0) ? (
@@ -61,7 +64,7 @@ export function LoadMore({
             {isFetchingNextPage ? "Loading…" : "Load more records"}
           </button>
         ) : (
-          <p className="timecode text-paper/40">— end of register —</p>
+          <p className="timecode text-paper/60">— end of register —</p>
         )}
       </div>
     </section>

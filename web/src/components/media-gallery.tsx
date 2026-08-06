@@ -12,7 +12,6 @@ export function MediaGallery({ incident }: { incident: Incident }) {
       {incident.media.map((m) => (
         <li key={m.key} className="overflow-hidden rounded-md border hairline bg-black/40">
           {m.type.startsWith("video/") ? (
-            // eslint-disable-next-line jsx-a11y/media-has-caption
             <video
               controls
               preload="none"
@@ -23,7 +22,6 @@ export function MediaGallery({ incident }: { incident: Incident }) {
               <source src={mediaUrl(m.key)} type={m.type} />
             </video>
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={mediaUrl(m.key)}
               alt={`Evidence image ${m.hash.slice(0, 8)}`}

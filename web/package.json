@@ -27,6 +27,7 @@
     "zustand": "^5"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.62.1",
     "@serwist/next": "^9.5.12",
     "@tailwindcss/postcss": "^4",

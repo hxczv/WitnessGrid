@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapPin, X } from "lucide-react";
 import { createSavedArea } from "@/lib/api";
 import { closeRing, ringAreaSqKm, type LngLat } from "@/lib/polygon";
 import { useAuthStore } from "@/store/auth";
+
+const FOCUSABLE =
+  'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
 export function SavedAreaDialog({
   polygon,
@@ -19,6 +22,41 @@ export function SavedAreaDialog({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  // Focus trap: keep Tab cycling inside the panel, close on Escape, and put
+  // focus back on the opener when the dialog unmounts.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const panel = panelRef.current;
+    panel?.querySelector<HTMLElement>("input, button")?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !panel) return;
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      opener?.focus();
+    };
+  }, [onClose]);
 
   const ring = closeRing(polygon);
   const areaKm2 = ringAreaSqKm(ring);
@@ -44,7 +82,7 @@ export function SavedAreaDialog({
       aria-modal="true"
       aria-label="Save this area"
     >
-      <div className="w-full max-w-md rounded-md border hairline bg-surface p-5">
+      <div ref={panelRef} className="w-full max-w-md rounded-md border hairline bg-surface p-5">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-bold">Save this area</h2>
           <button type="button" className="btn p-2" onClick={onClose} aria-label="Close">
@@ -70,7 +108,6 @@ export function SavedAreaDialog({
             className="field"
             value={name}
             maxLength={100}
-            autoFocus
             placeholder="e.g. High Street nightlife"
             onChange={(e) => setName(e.target.value)}
           />
