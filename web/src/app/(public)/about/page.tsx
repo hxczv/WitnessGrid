@@ -11,11 +11,11 @@ export const metadata = {
 export default function AboutPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <p className="timecode text-amber">ABOUT · WITNESSGRID</p>
+      <p className="timecode text-accent">ABOUT · WITNESSGRID</p>
       <h1 className="font-display mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">
         A register, not a newsroom.
       </h1>
-      <p className="mt-4 max-w-2xl text-lg text-paper/80">
+      <p className="mt-4 max-w-2xl text-lg text-fg/90">
         WitnessGrid is a free, open-source public register of police interactions
         in the UK, recorded by the people who see them.
       </p>
@@ -61,16 +61,16 @@ export default function AboutPage() {
       <Section title="Governance and openness">
         <p>
           This is not a platform for anonymous smearing — reports that break our{" "}
-          <Link href="/content-policy" className="text-amber underline-offset-4 hover:underline">
+          <Link href="/content-policy" className="text-accent underline-offset-4 hover:underline">
             content policy
           </Link>{" "}
           are removed. Records can be withdrawn by their witness at any time. See
           our{" "}
-          <Link href="/privacy" className="text-amber underline-offset-4 hover:underline">
+          <Link href="/privacy" className="text-accent underline-offset-4 hover:underline">
             privacy notice
           </Link>{" "}
           and{" "}
-          <Link href="/terms" className="text-amber underline-offset-4 hover:underline">
+          <Link href="/terms" className="text-accent underline-offset-4 hover:underline">
             terms
           </Link>
           .

@@ -11,7 +11,7 @@ const MapView = dynamic(
   {
     loading: () => (
       <div className="grid h-full place-items-center">
-        <p className="timecode text-paper/60">Loading map…</p>
+        <p className="timecode text-muted">Loading map…</p>
       </div>
     ),
   },

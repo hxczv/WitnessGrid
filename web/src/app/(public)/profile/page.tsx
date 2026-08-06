@@ -47,8 +47,8 @@ export default function ProfilePage() {
       <header className="rounded-md border hairline bg-surface/60 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="timecode text-amber">@{user.username}</p>
-            <p className="mt-1 text-paper/70">{user.email}</p>
+            <p className="timecode text-accent">@{user.username}</p>
+            <p className="mt-1 text-fg/80">{user.email}</p>
           </div>
           <div className="flex gap-2">
             <button type="button" className="btn" disabled={mine.isFetching} onClick={() => void mine.refetch()}>
@@ -61,7 +61,7 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
-        <p className="timecode mt-4 border-t hairline pt-3 text-paper/50">
+        <p className="timecode mt-4 border-t hairline pt-3 text-muted">
           {count === undefined ? "loading…" : `${count} record${count === 1 ? "" : "s"}`} · your
           pseudonymous register
         </p>
@@ -80,7 +80,7 @@ export default function ProfilePage() {
       <div className="py-6">
         {count !== undefined && count === 0 ? (
           <div className="text-center">
-            <p className="text-paper/70">You haven&apos;t recorded anything yet.</p>
+            <p className="text-fg/80">You haven&apos;t recorded anything yet.</p>
             <Link href="/report" className="btn btn-primary mt-4">
               <Camera className="size-4" aria-hidden />
               Record your first encounter

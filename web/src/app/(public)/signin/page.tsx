@@ -76,16 +76,16 @@ function SignInForm() {
   if (sentTo) {
     return (
       <div>
-        <KeyRound className="size-8 text-amber" aria-hidden />
+        <KeyRound className="size-8 text-accent" aria-hidden />
         <h1 className="mt-3 font-display text-2xl font-extrabold tracking-tight">
           Check your inbox
         </h1>
-        <p className="mt-2 text-paper/70">
-          We&apos;ve emailed a sign-in link to <span className="timecode text-amber">{sentTo}</span>.
+        <p className="mt-2 text-fg/80">
+          We&apos;ve emailed a sign-in link to <span className="timecode text-accent">{sentTo}</span>.
           It lasts a short time and signs you in on this device. No password, ever.
         </p>
         {sentTo.endsWith("@example.com") || process.env.NODE_ENV !== "production" ? (
-          <p className="timecode mt-3 rounded-md border hairline bg-surface/60 px-3 py-2 text-paper/60">
+          <p className="timecode mt-3 rounded-md border hairline bg-surface/60 px-3 py-2 text-muted">
             Dev mode: the link is also printed in <code>backend/.dev-mail.log</code>.
           </p>
         ) : null}
@@ -112,11 +112,11 @@ function SignInForm() {
 
   return (
     <div>
-      <Mail className="size-8 text-amber" aria-hidden />
+      <Mail className="size-8 text-accent" aria-hidden />
       <h1 className="mt-3 font-display text-2xl font-extrabold tracking-tight">
         Sign in to record
       </h1>
-      <p className="mt-2 max-w-md text-paper/70">
+      <p className="mt-2 max-w-md text-fg/80">
         We email you a one-time link. First time here? The same link creates your
         pseudonymous witness account.
       </p>
@@ -155,7 +155,7 @@ function SignInForm() {
             maxLength={20}
             pattern="[a-z0-9_]+"
           />
-          <span className="text-xs text-paper/50">3–20 lowercase letters, numbers or underscores.</span>
+          <span className="text-xs text-muted">3–20 lowercase letters, numbers or underscores.</span>
         </label>
         <button type="submit" className="btn btn-primary w-full" disabled={busy}>
           {busy ? "Sending…" : "Send me the link"}
@@ -168,7 +168,7 @@ function SignInForm() {
 export default function SignInPage() {
   return (
     <main className="mx-auto flex min-h-[60vh] max-w-lg flex-col justify-center px-4 py-12">
-      <Suspense fallback={<p className="timecode text-paper/50">Loading…</p>}>
+      <Suspense fallback={<p className="timecode text-muted">Loading…</p>}>
         <SignInForm />
       </Suspense>
     </main>

@@ -9,7 +9,7 @@ export const metadata = {
 export default function TermsPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <p className="timecode text-amber">TERMS · EFFECTIVE ALWAYS</p>
+      <p className="timecode text-accent">TERMS · EFFECTIVE ALWAYS</p>
       <h1 className="font-display mt-2 text-3xl font-extrabold tracking-tight">
         Terms of use.
       </h1>
@@ -34,7 +34,7 @@ export default function TermsPage() {
         <p>
           You retain responsibility for what you submit. You confirm that you have
           the right to record and publish the content, that it complies with our{" "}
-          <Link href="/content-policy" className="text-amber underline-offset-4 hover:underline">
+          <Link href="/content-policy" className="text-accent underline-offset-4 hover:underline">
             content policy
           </Link>
           , and that you will not use the register to harass, defame, or endanger

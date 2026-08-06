@@ -21,10 +21,10 @@ export function SavedAreasManager({ token }: { token: string }) {
     <section aria-label="Saved areas" className="mt-6 rounded-md border hairline bg-surface/60 p-5">
       <h2 className="label">Saved areas</h2>
       {areas.isError ? (
-        <p className="mt-2 text-sm text-flag">Could not load your saved areas.</p>
+        <p className="mt-2 text-sm text-danger">Could not load your saved areas.</p>
       ) : areas.data ? (
         areas.data.length === 0 ? (
-          <p className="timecode mt-2 text-paper/50">
+          <p className="timecode mt-2 text-muted">
             None yet — draw a polygon on the map and save it to watch a place.
           </p>
         ) : (
@@ -36,7 +36,7 @@ export function SavedAreasManager({ token }: { token: string }) {
               >
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{area.name}</p>
-                  <p className="timecode text-paper/50">
+                  <p className="timecode text-muted">
                     {area.polygon.length - 1} points · {area.alerts} alert
                     {area.alerts === 1 ? "" : "s"}
                   </p>
@@ -50,7 +50,7 @@ export function SavedAreasManager({ token }: { token: string }) {
           </ul>
         )
       ) : (
-        <p className="timecode mt-2 text-paper/50">loading…</p>
+        <p className="timecode mt-2 text-muted">loading…</p>
       )}
     </section>
   );

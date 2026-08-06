@@ -77,7 +77,7 @@ export function SavedAreaDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-ink/70 p-4"
+      className="fixed inset-0 z-50 grid place-items-center bg-bg/70 p-4"
       role="dialog"
       aria-modal="true"
       aria-label="Save this area"
@@ -90,13 +90,13 @@ export function SavedAreaDialog({
           </button>
         </div>
 
-        <p className="mt-2 text-sm text-paper/70">
-          <MapPin className="mr-1 inline size-4 text-amber" aria-hidden />
+        <p className="mt-2 text-sm text-fg/80">
+          <MapPin className="mr-1 inline size-4 text-accent" aria-hidden />
           {ring.length - (ring.length > 0 ? 1 : 0)} points · approx {areaKm2.toFixed(0)} km²
         </p>
 
         {tooLarge ? (
-          <p className="mt-3 rounded-md border border-amber/40 bg-amber/10 px-3 py-2 text-xs text-amber">
+          <p className="mt-3 rounded-md border border-accent/40 bg-accent/10 px-3 py-2 text-xs text-accent">
             This area is very large — you will be alerted for every new record inside it,
             which may be a lot.
           </p>
@@ -113,7 +113,7 @@ export function SavedAreaDialog({
           />
         </label>
 
-        {error ? <p className="mt-3 text-sm text-flag">{error}</p> : null}
+        {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
 
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" className="btn" onClick={onClose} disabled={busy}>

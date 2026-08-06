@@ -9,7 +9,7 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <p className="timecode text-amber">PRIVACY NOTICE</p>
+      <p className="timecode text-accent">PRIVACY NOTICE</p>
       <h1 className="font-display mt-2 text-3xl font-extrabold tracking-tight">
         Your data, kept minimal.
       </h1>
@@ -55,7 +55,7 @@ export default function PrivacyPage() {
       <Section title="Your rights">
         <p>
           You can delete any of your records permanently from your{" "}
-          <Link href="/profile" className="text-amber underline-offset-4 hover:underline">
+          <Link href="/profile" className="text-accent underline-offset-4 hover:underline">
             profile
           </Link>{" "}
           at any time. For questions, requests, or erasure beyond self-service,

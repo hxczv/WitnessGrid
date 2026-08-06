@@ -66,7 +66,7 @@ export default async function IncidentPage({ params }: Props) {
           <h1 className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">
             {typeLabel(incident.incident_type)} · {formatForce(incident.police_force)}
           </h1>
-          <p className="timecode text-paper/60">{incident.view_count} views</p>
+          <p className="timecode text-muted">{incident.view_count} views</p>
         </div>
         <Timecode
           parts={[
@@ -79,7 +79,7 @@ export default async function IncidentPage({ params }: Props) {
               ? `±${incident.location_accuracy_m}m`
               : undefined,
           ].filter((p): p is string => Boolean(p))}
-          className="border-t hairline bg-ink/70 px-4 py-2 text-amber"
+          className="border-t hairline bg-bg/70 px-4 py-2 text-accent"
         />
       </header>
 
@@ -91,7 +91,7 @@ export default async function IncidentPage({ params }: Props) {
 
       <section aria-label="Location" className="mb-8">
         <MiniMap latitude={incident.latitude} longitude={incident.longitude} />
-        <p className="timecode mt-2 text-paper/50">
+        <p className="timecode mt-2 text-muted">
           Pin placed by the witness {incident.location_accuracy_m !== null && incident.location_accuracy_m !== undefined
             ? `(captured at ±${incident.location_accuracy_m}m)`
             : "(no GPS accuracy captured)"}
@@ -103,9 +103,9 @@ export default async function IncidentPage({ params }: Props) {
         <p className="whitespace-pre-wrap text-lg leading-relaxed">
           {incident.description || "No description was recorded with this submission."}
         </p>
-        <p className="mt-3 text-sm text-paper/60">
+        <p className="mt-3 text-sm text-muted">
           Reported by{" "}
-          <span className="timecode text-amber">
+          <span className="timecode text-accent">
             {incident.username ? `@${incident.username}` : "anonymous witness"}
           </span>{" "}
           · {formatLocal(incident.created_at)}
@@ -149,8 +149,8 @@ export default async function IncidentPage({ params }: Props) {
 function Fact({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b hairline py-1.5">
-      <dt className="text-paper/50">{k}</dt>
-      <dd className="text-paper">{v}</dd>
+      <dt className="text-muted">{k}</dt>
+      <dd className="text-fg">{v}</dd>
     </div>
   );
 }

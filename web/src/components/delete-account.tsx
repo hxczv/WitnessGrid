@@ -35,9 +35,9 @@ export function DeleteAccount() {
   const matched = typed.trim().toLowerCase() === PHRASE;
 
   return (
-    <section className="mt-6 rounded-md border border-flag/40 bg-flag/5 p-5">
-      <h2 className="font-display text-base font-bold text-flag">Delete your account</h2>
-      <p className="mt-1 text-sm text-paper/70">
+    <section className="mt-6 rounded-md border border-danger/40 bg-danger/5 p-5">
+      <h2 className="font-display text-base font-bold text-danger">Delete your account</h2>
+      <p className="mt-1 text-sm text-fg/80">
         Erases your account and personal data. Your submitted incidents and footage
         remain in the public register with attribution removed, because uploading
         waives their deletion (see Terms).
@@ -49,7 +49,7 @@ export function DeleteAccount() {
         </button>
       ) : (
         <div className="mt-4 rounded-md border hairline bg-surface/60 p-4">
-          <p className="timecode text-flag">This cannot be undone.</p>
+          <p className="timecode text-danger">This cannot be undone.</p>
           <label className="mt-3 block">
             <span className="label">Type “delete my account” to confirm</span>
             <input
@@ -60,7 +60,7 @@ export function DeleteAccount() {
               onChange={(e) => setTyped(e.target.value)}
             />
           </label>
-          {error ? <p className="mt-3 text-sm text-flag">{error}</p> : null}
+          {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"

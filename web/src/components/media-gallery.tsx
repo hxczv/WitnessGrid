@@ -5,7 +5,7 @@ import type { Incident } from "@/lib/contract";
 
 export function MediaGallery({ incident }: { incident: Incident }) {
   if (incident.media.length === 0) {
-    return <p className="timecode text-paper/50">No media attached to this record.</p>;
+    return <p className="timecode text-muted">No media attached to this record.</p>;
   }
   return (
     <ul className="grid gap-3">
@@ -30,7 +30,7 @@ export function MediaGallery({ incident }: { incident: Incident }) {
               className="max-h-[70vh] w-full object-contain"
             />
           )}
-          <p className="timecode border-t hairline bg-surface/60 px-3 py-1.5 text-paper/50">
+          <p className="timecode border-t hairline bg-surface/60 px-3 py-1.5 text-muted">
             {m.type} · {m.hash.slice(0, 12)}…
           </p>
         </li>

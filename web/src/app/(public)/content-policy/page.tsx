@@ -8,11 +8,11 @@ export const metadata = {
 export default function ContentPolicyPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <p className="timecode text-amber">CONTENT POLICY</p>
+      <p className="timecode text-accent">CONTENT POLICY</p>
       <h1 className="font-display mt-2 text-3xl font-extrabold tracking-tight">
         What belongs on the register.
       </h1>
-      <p className="mt-4 max-w-2xl text-paper/80">
+      <p className="mt-4 max-w-2xl text-fg/90">
         The register exists to record verified-format evidence of police
         interactions. We remove content that undermines that purpose.
       </p>

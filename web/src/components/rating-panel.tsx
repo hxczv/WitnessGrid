@@ -85,8 +85,8 @@ function AxisRating({
           onClick={() => onSelect(n)}
           className={`h-11 w-11 rounded-md border hairline font-mono text-sm ${
             mine !== null && n <= mine
-              ? "border-amber bg-amber/15 text-amber"
-              : "text-paper/60"
+              ? "border-accent bg-accent/15 text-accent"
+              : "text-muted"
           } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
         >
           {n}
@@ -141,7 +141,7 @@ export function RatingPanel({
   return (
     <section aria-label="Ratings" className="mb-8 rounded-md border hairline bg-surface/60 p-5">
       <h2 className="label">Ratings</h2>
-      <p className="mt-1 text-sm text-paper/70">
+      <p className="mt-1 text-sm text-fg/80">
         {count === 0
           ? "No ratings yet."
           : `Averaged from ${count} rating${count === 1 ? "" : "s"}.`}
@@ -152,8 +152,8 @@ export function RatingPanel({
         return (
           <div key={key} className="mt-3">
             <div className="flex items-baseline justify-between">
-              <span className="timecode text-paper/70">{label}</span>
-              <span className="timecode text-amber" data-testid={`rating-avg-${key}`}>
+              <span className="timecode text-fg/80">{label}</span>
+              <span className="timecode text-accent" data-testid={`rating-avg-${key}`}>
                 {avg === null ? "—" : `${avg} / 5`}
               </span>
             </div>
@@ -167,8 +167,8 @@ export function RatingPanel({
           </div>
         );
       })}
-      {!token ? <p className="mt-4 text-xs text-paper/60">Sign in to rate this record.</p> : null}
-      {rate.isError ? <p className="mt-2 text-xs text-flag">Could not save your rating.</p> : null}
+      {!token ? <p className="mt-4 text-xs text-muted">Sign in to rate this record.</p> : null}
+      {rate.isError ? <p className="mt-2 text-xs text-danger">Could not save your rating.</p> : null}
     </section>
   );
 }

@@ -26,7 +26,7 @@ export default async function StatsPage() {
     <main className="mx-auto max-w-5xl px-4 py-8">
       <header className="mb-6">
         <h1 className="font-display text-3xl font-extrabold tracking-tight">Stats.</h1>
-        <p className="mt-2 max-w-2xl text-paper/70">
+        <p className="mt-2 max-w-2xl text-fg/80">
           What our witnesses have recorded, in aggregate.
         </p>
       </header>
@@ -40,16 +40,16 @@ export default async function StatsPage() {
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <section className="rounded-md border hairline bg-surface/60 p-5">
             <h2 className="label">Totals</h2>
-            <p className="mt-2 font-display text-4xl font-extrabold text-amber">
+            <p className="mt-2 font-display text-4xl font-extrabold text-accent">
               {stats.total_incidents}
             </p>
-            <p className="timecode text-paper/60">
+            <p className="timecode text-muted">
               {stats.total_views} view{stats.total_views === 1 ? "" : "s"}
             </p>
             {stats.avg_rating !== null ? (
-              <p className="timecode mt-3 text-paper/60">
+              <p className="timecode mt-3 text-muted">
                 Average rating across rated records:{" "}
-                <span className="text-amber">{stats.avg_rating.toFixed(1)} / 5</span>
+                <span className="text-accent">{stats.avg_rating.toFixed(1)} / 5</span>
               </p>
             ) : null}
           </section>

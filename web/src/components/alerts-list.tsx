@@ -17,10 +17,10 @@ export function AlertsList({ token }: { token: string }) {
     <section aria-label="Alerts" className="mt-6 rounded-md border hairline bg-surface/60 p-5">
       <h2 className="label">Alerts</h2>
       {alerts.isError ? (
-        <p className="mt-2 text-sm text-flag">Could not load your alerts.</p>
+        <p className="mt-2 text-sm text-danger">Could not load your alerts.</p>
       ) : alerts.data ? (
         alerts.data.items.length === 0 ? (
-          <p className="timecode mt-2 text-paper/50">
+          <p className="timecode mt-2 text-muted">
             No alerts yet — new records inside your saved areas will appear here and by email.
           </p>
         ) : (
@@ -31,14 +31,14 @@ export function AlertsList({ token }: { token: string }) {
                   href={`/incident/${alert.incident_id}`}
                   className="flex items-center gap-3 border-b hairline px-1 py-2.5 hover:bg-surface"
                 >
-                  <Bell className="size-4 shrink-0 text-amber" aria-hidden />
+                  <Bell className="size-4 shrink-0 text-accent" aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm">
                       <span className="font-semibold">{alert.area_name}</span> ·{" "}
                       {typeLabel(alert.incident.incident_type)} ·{" "}
                       {formatForce(alert.incident.police_force)}
                     </span>
-                    <span className="timecode text-paper/50">
+                    <span className="timecode text-muted">
                       {formatLocal(alert.created_at)} · {alert.incident.timestamp.slice(0, 10)}
                     </span>
                   </span>
@@ -48,7 +48,7 @@ export function AlertsList({ token }: { token: string }) {
           </ul>
         )
       ) : (
-        <p className="timecode mt-2 text-paper/50">loading…</p>
+        <p className="timecode mt-2 text-muted">loading…</p>
       )}
     </section>
   );

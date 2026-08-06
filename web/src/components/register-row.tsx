@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Eye } from "lucide-react";
+import { Eye, Paperclip } from "lucide-react";
 import type { Incident } from "@/lib/contract";
 import { mediaUrl } from "@/lib/api";
+import { formatForce } from "@/lib/contract";
 import { incidentTimecodeParts, typeLabel } from "@/lib/time";
 import { Tartan } from "@/components/tartan";
 
@@ -10,7 +11,7 @@ function Thumbnail({ incident }: { incident: Incident }) {
   const thumbKey = media?.thumbnail_key ?? (media && media.type.startsWith("image/") ? media.key : null);
   if (!thumbKey) {
     return (
-      <div className="grid h-24 w-36 place-items-center overflow-hidden border hairline bg-surface">
+      <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-sm border hairline bg-surface sm:w-36">
         <Tartan thin className="w-full" />
       </div>
     );
@@ -19,9 +20,11 @@ function Thumbnail({ incident }: { incident: Incident }) {
     <img
       src={mediaUrl(thumbKey)}
       alt=""
+      width={144}
+      height={96}
       loading="lazy"
       decoding="async"
-      className="h-24 w-36 shrink-0 rounded-sm border hairline object-cover"
+      className="h-24 w-24 shrink-0 rounded-sm border hairline object-cover sm:w-36"
     />
   );
 }
@@ -32,23 +35,32 @@ export function RegisterRow({ incident }: { incident: Incident }) {
     <li>
       <Link
         href={`/incident/${incident.id}`}
-        className="flex items-start gap-4 border-b hairline px-3 py-3 transition-colors hover:bg-surface/60"
+        className="flex items-start gap-4 border-b hairline px-3 py-4 transition-colors hover:bg-surface/60"
       >
-        <div className="timecode flex w-36 shrink-0 flex-col gap-0.5 text-paper/70">
-          <span className="text-paper">{tc.time}</span>
-          <span className="text-amber">{tc.force}</span>
-          <span>{typeLabel(incident.incident_type).toUpperCase()}</span>
-          <span>{tc.coordinate}</span>
-          <span>{tc.hash}</span>
-        </div>
         <Thumbnail incident={incident} />
         <div className="min-w-0 flex-1">
-          <p className="line-clamp-3 text-sm leading-relaxed text-paper/90">
+          <p className="flex flex-wrap items-baseline gap-x-2">
+            <span className="font-display text-sm font-bold uppercase tracking-wide">
+              {typeLabel(incident.incident_type)}
+            </span>
+            <span className="text-sm text-muted">{formatForce(incident.police_force)}</span>
+          </p>
+          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-fg/90">
             {incident.description || "No description recorded for this incident."}
           </p>
-          <p className="timecode mt-1.5 flex items-center gap-1 text-paper/40">
-            <Eye className="size-3.5" aria-hidden />
-            {incident.view_count} view{incident.view_count === 1 ? "" : "s"}
+          <p className="timecode mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted">
+            <span>{tc.time}</span>
+            <span>{tc.coordinate}</span>
+            {incident.media.length > 0 ? (
+              <span className="inline-flex items-center gap-1">
+                <Paperclip className="size-3" aria-hidden />
+                {incident.media.length}
+              </span>
+            ) : null}
+            <span className="inline-flex items-center gap-1">
+              <Eye className="size-3" aria-hidden />
+              {incident.view_count} view{incident.view_count === 1 ? "" : "s"}
+            </span>
           </p>
         </div>
       </Link>

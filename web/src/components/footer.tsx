@@ -13,19 +13,19 @@ export function Footer() {
     <footer className="mt-16 border-t hairline pb-24 lg:pb-8">
       <div className="mx-auto max-w-5xl px-4 py-10">
         <Wordmark className="mb-4 justify-center lg:justify-start" />
-        <p className="mx-auto max-w-xl text-center text-sm text-paper/60 lg:text-left">
+        <p className="mx-auto max-w-xl text-center text-sm text-muted lg:text-left">
           WitnessGrid is a free, open-source evidence register. Reports are the
           witnesses&apos; own recordings; they have not been verified by anyone.
           Only record if it is safe to do so.
         </p>
-        <nav className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-paper/80 lg:justify-start" aria-label="Policies">
+        <nav className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-fg/90 lg:justify-start" aria-label="Policies">
           {LINKS.map((l) => (
-            <Link key={l.href} href={l.href} className="underline-offset-4 hover:text-amber hover:underline">
+            <Link key={l.href} href={l.href} className="underline-offset-4 hover:text-accent hover:underline">
               {l.label}
             </Link>
           ))}
         </nav>
-        <p className="timecode mt-8 text-center text-paper/40 lg:text-left">
+        <p className="timecode mt-8 text-center text-muted lg:text-left">
           witnessgrid · open source · MIT licence
         </p>
       </div>

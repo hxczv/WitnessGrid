@@ -55,7 +55,7 @@ export default async function HomePage({
         <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
           The public register.
         </h1>
-        <p className="mt-2 max-w-2xl text-paper/70">
+        <p className="mt-2 max-w-2xl text-fg/80">
           Every police interaction recorded by our witnesses — a precise,
           pseudonymous, unverified evidence register. Anyone can browse.
         </p>
@@ -81,7 +81,7 @@ export default async function HomePage({
         filters={filters}
       />
 
-      <p className="mt-4 px-3 text-xs text-paper/50">
+      <p className="mt-4 px-3 text-xs text-muted">
         Reports are the witnesses&apos; own recordings and have not been
         independently verified. Timestamps and coordinates were captured at
         record time and may be adjusted by the witness.

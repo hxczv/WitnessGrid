@@ -278,7 +278,7 @@ export function MapView() {
     const points = isClosed(polygon) ? polygon.slice(0, -1) : polygon;
     for (const [lng, lat] of points) {
       const el = document.createElement("div");
-      el.className = "size-3 rounded-full border-2 border-amber bg-ink/80";
+      el.className = "size-3 rounded-full border-2 border-accent bg-bg/80";
       vertexMarkersRef.current.push(
         new maplibregl.Marker({ element: el }).setLngLat({ lng, lat }).addTo(map),
       );
@@ -334,8 +334,8 @@ export function MapView() {
                 aria-pressed={filters.days === r.days}
                 className={`min-h-9 flex-1 rounded-sm border px-2 text-xs font-semibold uppercase tracking-wide transition-colors ${
                   filters.days === r.days
-                    ? "border-amber bg-amber text-ink"
-                    : "border-line text-paper/70 hover:border-amber"
+                    ? "border-accent bg-accent text-on-accent"
+                    : "border-line text-fg/80 hover:border-accent"
                 }`}
               >
                 {r.label}
@@ -354,7 +354,7 @@ export function MapView() {
         {user ? (
           drawing ? (
             <div className="mt-3 border-t hairline pt-3">
-              <p className="timecode mb-2 text-amber">
+              <p className="timecode mb-2 text-accent">
                 Click the map to place points.
               </p>
               <div className="flex gap-2">
@@ -372,7 +372,7 @@ export function MapView() {
               </div>
               <button
                 type="button"
-                className="timecode mt-2 w-full py-1 text-paper/50"
+                className="timecode mt-2 w-full py-1 text-muted"
                 onClick={() => setPolygon((p) => removeLastVertex(p))}
                 disabled={polygon.length === 0}
               >
@@ -396,7 +396,7 @@ export function MapView() {
 
       {loading ? (
         <div className="absolute right-3 top-16 z-10">
-          <p className="timecode rounded-sm border hairline bg-surface/90 px-2 py-1 text-paper/80">
+          <p className="timecode rounded-sm border hairline bg-surface/90 px-2 py-1 text-fg/90">
             Loading records…
           </p>
         </div>
@@ -417,7 +417,7 @@ export function MapView() {
           <button
             type="button"
             onClick={() => setListOpen((v) => !v)}
-            className="timecode flex w-full items-center justify-between px-3 py-2 text-paper/80"
+            className="timecode flex w-full items-center justify-between px-3 py-2 text-fg/90"
             aria-expanded={listOpen}
           >
             <span>
@@ -434,11 +434,11 @@ export function MapView() {
                     onClick={() => void router.push(`/incident/${incident.id}`)}
                     className="timecode flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-surface"
                   >
-                    <span className="truncate text-paper/80">
+                    <span className="truncate text-fg/90">
                       {formatForce(incident.police_force)} ·{" "}
                       {typeLabel(incident.incident_type).toUpperCase()}
                     </span>
-                    <span className="shrink-0 text-amber">{incident.timestamp.slice(11, 16)}</span>
+                    <span className="shrink-0 text-accent">{incident.timestamp.slice(11, 16)}</span>
                   </button>
                 </li>
               ))}

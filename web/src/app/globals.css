@@ -1,43 +1,55 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. Names are semantic and never flip between themes:
+ * --bg is always the page background, --fg always the main text.
+ * Dark is the default; light follows prefers-color-scheme.
+ */
 :root {
-  --ink: #12151c;
+  --bg: #12151c;
+  --fg: #e8e6de;
   --surface: #1a1e27;
-  --paper: #e8e6de;
-  --amber: #e8a33d;
-  --verified: #4f8c7d;
-  --flag: #c24a3d;
+  --surface-2: #21262f;
   --line: #2a2f3a;
+  --muted: #a6a89f;
+  --accent: #e8a33d;
+  --on-accent: #12151c;
+  --verified: #4f8c7d;
+  --danger: #c24a3d;
   color-scheme: dark;
 }
 
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f7f5ee;
+    --fg: #1a1d24;
+    --surface: #ffffff;
+    --surface-2: #efede4;
+    --line: #d9d6cb;
+    --muted: #565a63;
+    --accent: #a97417;
+    --on-accent: #12151c;
+    --verified: #3f7265;
+    --danger: #a63a2e;
+  }
+}
+
 @theme {
-  --color-ink: var(--ink);
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
   --color-surface: var(--surface);
-  --color-paper: var(--paper);
-  --color-amber: var(--amber);
-  --color-verified: var(--verified);
-  --color-flag: var(--flag);
+  --color-surface-2: var(--surface-2);
   --color-line: var(--line);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-verified: var(--verified);
+  --color-danger: var(--danger);
 
   --font-sans: var(--font-atkinson);
   --font-display: var(--font-archivo);
   --font-mono: var(--font-plex);
-}
-
-/* Light theme: --paper is the light-mode background, --ink the text.
-   The semantic tokens flip so components keep their meaning. */
-@media (prefers-color-scheme: light) {
-  :root {
-    color-scheme: light;
-    --ink: #e8e6de;
-    --paper: #12151c;
-    --surface: #f7f5ee;
-    --line: #d9d6cb;
-    --amber: #b97f1e;
-    --verified: #3f7265;
-    --flag: #a63a2e;
-  }
 }
 
 @layer base {
@@ -50,32 +62,27 @@
   }
 
   body {
-    background: var(--ink);
-    color: var(--paper);
+    background: var(--bg);
+    color: var(--fg);
     font-family: var(--font-atkinson), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
   ::selection {
-    background: var(--amber);
-    color: var(--ink);
+    background: var(--accent);
+    color: var(--on-accent);
   }
 
   :focus-visible {
-    outline: 2px solid var(--amber);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
-  }
-
-  input,
-  select,
-  textarea {
-    color-scheme: dark;
   }
 }
 
 @layer components {
-  /* Machine-verified facts: mono strip with wide tracking. */
+  /* Machine-verified facts only: timestamps, hashes, coordinates, refs.
+     Mono elsewhere is noise, not a trust signal. */
   .timecode {
     font-family: var(--font-plex), ui-monospace, monospace;
     font-size: 0.72rem;
@@ -84,12 +91,12 @@
     text-transform: uppercase;
   }
 
-  /* Sillitoe tartan checkerboard divider / loading motif. */
+  /* Sillitoe tartan checkerboard divider. */
   .tartan {
     height: 8px;
     background-image: repeating-conic-gradient(
-      var(--amber) 0% 25%,
-      var(--ink) 0% 50%
+      var(--accent) 0% 25%,
+      var(--bg) 0% 50%
     );
     background-size: 16px 16px;
   }
@@ -97,8 +104,8 @@
   .tartan-thin {
     height: 4px;
     background-image: repeating-conic-gradient(
-      var(--amber) 0% 25%,
-      var(--ink) 0% 50%
+      var(--accent) 0% 25%,
+      var(--bg) 0% 50%
     );
     background-size: 12px 12px;
   }
@@ -124,7 +131,7 @@
     border-radius: 0.375rem;
     border: 1px solid var(--line);
     background: var(--surface);
-    color: var(--paper);
+    color: var(--fg);
     font-weight: 600;
     font-size: 0.95rem;
     cursor: pointer;
@@ -132,7 +139,8 @@
   }
 
   .btn:hover {
-    border-color: var(--amber);
+    background: var(--surface-2);
+    border-color: var(--accent);
   }
 
   .btn:disabled {
@@ -141,19 +149,25 @@
   }
 
   .btn-primary {
-    background: var(--amber);
-    border-color: var(--amber);
-    color: var(--ink);
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
   }
 
   .btn-primary:hover {
+    background: var(--accent);
     filter: brightness(1.08);
   }
 
   .btn-danger {
-    background: color-mix(in srgb, var(--flag) 16%, var(--surface));
-    border-color: color-mix(in srgb, var(--flag) 55%, transparent);
-    color: var(--flag);
+    background: color-mix(in srgb, var(--danger) 16%, var(--surface));
+    border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+    color: var(--danger);
+  }
+
+  .btn-danger:hover {
+    background: color-mix(in srgb, var(--danger) 24%, var(--surface));
+    border-color: var(--danger);
   }
 
   .field {
@@ -162,13 +176,17 @@
     padding: 0.5rem 0.75rem;
     border-radius: 0.375rem;
     border: 1px solid var(--line);
-    background: var(--ink);
-    color: var(--paper);
+    background: var(--bg);
+    color: var(--fg);
     font-size: 0.95rem;
   }
 
+  .field::placeholder {
+    color: var(--muted);
+  }
+
   .field:focus-visible {
-    outline: 2px solid var(--amber);
+    outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
 
@@ -177,7 +195,7 @@
     font-size: 0.78rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: color-mix(in srgb, var(--paper) 65%, transparent);
+    color: var(--muted);
     margin-bottom: 0.4rem;
   }
 
@@ -192,7 +210,7 @@
     margin-top: 0.3rem;
     width: 1.15rem;
     height: 1.15rem;
-    accent-color: var(--amber);
+    accent-color: var(--accent);
   }
 }
 

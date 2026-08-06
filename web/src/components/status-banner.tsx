@@ -15,14 +15,14 @@ export function StatusBanner({
       role={kind === "error" ? "alert" : "status"}
       className={`mb-6 flex items-start gap-3 rounded-md border p-4 text-sm ${
         kind === "error"
-          ? "border-flag/50 bg-flag/10 text-flag"
-          : "border-line bg-surface text-paper/90"
+          ? "border-danger/50 bg-danger/10 text-danger"
+          : "border-line bg-surface text-fg/90"
       }`}
     >
       <Icon className="mt-0.5 size-5 shrink-0" aria-hidden />
       <div>
         <p className="font-semibold">{message}</p>
-        {detail ? <p className="mt-1 text-paper/70">{detail}</p> : null}
+        {detail ? <p className="mt-1 text-fg/80">{detail}</p> : null}
       </div>
     </div>
   );

@@ -58,7 +58,7 @@ export function ReportIncident({ incidentId }: { incidentId: string }) {
   return (
     <div className="rounded-md border hairline bg-surface/60 p-4">
       <h2 className="font-display text-base font-bold">Report this record</h2>
-      <p className="mt-1 text-sm text-paper/70">
+      <p className="mt-1 text-sm text-fg/80">
         Flag clearly illegal content, harassment, misinformation or privacy
         problems. Reports are reviewed by moderators.
       </p>
@@ -87,7 +87,7 @@ export function ReportIncident({ incidentId }: { incidentId: string }) {
         />
       </label>
       {state === "error" ? (
-        <p className="mt-2 text-sm text-flag">{error}</p>
+        <p className="mt-2 text-sm text-danger">{error}</p>
       ) : null}
       <button
         type="button"

@@ -30,9 +30,9 @@ export function DeleteIncident({ incidentId, ownerUserId }: { incidentId: string
   };
 
   return (
-    <div className="rounded-md border border-flag/40 bg-flag/5 p-4">
-      <h2 className="font-display text-base font-bold text-flag">Withdraw this record</h2>
-      <p className="mt-1 text-sm text-paper/70">
+    <div className="rounded-md border border-danger/40 bg-danger/5 p-4">
+      <h2 className="font-display text-base font-bold text-danger">Withdraw this record</h2>
+      <p className="mt-1 text-sm text-fg/80">
         Deleting removes the record and all of its media permanently. This is
         your right to erasure — it cannot be undone.
       </p>
@@ -55,7 +55,7 @@ export function DeleteIncident({ incidentId, ownerUserId }: { incidentId: string
           </button>
         </div>
       )}
-      {error ? <p className="mt-2 text-sm text-flag">{error}</p> : null}
+      {error ? <p className="mt-2 text-sm text-danger">{error}</p> : null}
     </div>
   );
 }

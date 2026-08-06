@@ -28,18 +28,18 @@ export function StatsMeSection({ token }: { token: string }) {
     <section aria-label="Your stats" className="mt-6 rounded-md border hairline bg-surface/60 p-5">
       <h2 className="label">Your stats</h2>
       {stats.isError ? (
-        <p className="mt-2 text-sm text-flag">Could not load your stats.</p>
+        <p className="mt-2 text-sm text-danger">Could not load your stats.</p>
       ) : stats.data ? (
         <dl className="timecode mt-2 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
           {rows.map(([k, v]) => (
             <div key={k} className="flex items-baseline justify-between gap-3 border-b hairline py-1.5">
-              <dt className="text-paper/50">{k}</dt>
-              <dd className="text-paper">{v}</dd>
+              <dt className="text-muted">{k}</dt>
+              <dd className="text-fg">{v}</dd>
             </div>
           ))}
         </dl>
       ) : (
-        <p className="timecode mt-2 text-paper/50">loading…</p>
+        <p className="timecode mt-2 text-muted">loading…</p>
       )}
     </section>
   );

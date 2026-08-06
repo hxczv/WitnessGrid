@@ -45,7 +45,7 @@ export function Nav() {
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r hairline bg-ink/85 backdrop-blur lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r hairline bg-bg/85 backdrop-blur lg:flex">
         <Link href="/" className="flex h-16 items-center border-b hairline px-5">
           <Wordmark />
         </Link>
@@ -56,7 +56,7 @@ export function Nav() {
               href={href}
               aria-current={active ? "page" : undefined}
               className={`flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                active ? "bg-surface text-amber" : "text-paper/80 hover:bg-surface hover:text-paper"
+                active ? "bg-surface text-accent" : "text-fg/90 hover:bg-surface hover:text-fg"
               }`}
             >
               <Icon className="size-5" strokeWidth={2} aria-hidden />
@@ -69,7 +69,7 @@ export function Nav() {
             <div className="flex flex-col gap-2">
               <Link
                 href="/profile"
-                className="flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm text-paper/80 hover:bg-surface"
+                className="flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm text-fg/90 hover:bg-surface"
               >
                 <User className="size-5 text-verified" aria-hidden />
                 <span className="truncate">{username}</span>
@@ -77,7 +77,7 @@ export function Nav() {
               <button
                 type="button"
                 onClick={signOut}
-                className="flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm text-paper/80 hover:bg-surface hover:text-flag"
+                className="flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm text-fg/90 hover:bg-surface hover:text-danger"
               >
                 <LogOut className="size-5" aria-hidden />
                 Sign out
@@ -93,7 +93,7 @@ export function Nav() {
 
       {/* Mobile bottom nav */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t hairline bg-ink/90 backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t hairline bg-bg/90 backdrop-blur lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Mobile navigation"
       >
@@ -104,7 +104,7 @@ export function Nav() {
               href={href}
               aria-current={active ? "page" : undefined}
               className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[0.65rem] font-semibold uppercase tracking-wide ${
-                active ? "text-amber" : "text-paper/70"
+                active ? "text-accent" : "text-fg/80"
               }`}
             >
               <Icon className="size-6" strokeWidth={2} aria-hidden />

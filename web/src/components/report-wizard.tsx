@@ -267,13 +267,13 @@ export function ReportWizard() {
         <h2 className="font-display mt-4 text-2xl font-extrabold tracking-tight">
           {done.offline ? "Saved on this device" : "Report in the register"}
         </h2>
-        <p className="mx-auto mt-2 max-w-md text-paper/70">
+        <p className="mx-auto mt-2 max-w-md text-fg/80">
           {done.offline
             ? "You're offline or not signed in, so your report is queued on this device. It will be sent automatically when you're back online."
             : "Your record is now part of the public register. It appears the moment it is created."}
         </p>
         {done.offline && !token ? (
-          <p className="timecode mt-2 text-amber">
+          <p className="timecode mt-2 text-accent">
             Tip: sign in before going online so the report is attributed to your witness account.
           </p>
         ) : null}
@@ -307,11 +307,11 @@ export function ReportWizard() {
   if (!token) {
     return (
       <div className="rounded-md border hairline bg-surface/60 p-8 text-center">
-        <ShieldAlert className="mx-auto size-8 text-amber" aria-hidden />
+        <ShieldAlert className="mx-auto size-8 text-accent" aria-hidden />
         <h2 className="font-display mt-3 text-xl font-extrabold tracking-tight">
           Recording registers as you
         </h2>
-        <p className="mx-auto mt-2 max-w-md text-paper/70">
+        <p className="mx-auto mt-2 max-w-md text-fg/80">
           You can draft a report, but submitting it to the public register needs
           a sign-in. Reports are attributed to a pseudonymous witness account,
           never your real name.
@@ -328,7 +328,7 @@ export function ReportWizard() {
       <ol className="mb-6 flex items-center gap-2" aria-label="Steps">
         {STEPS.map((s, i) => (
           <li key={s.key} className="flex items-center gap-2">
-            {i > 0 ? <span className="timecode text-paper/30">/</span> : null}
+            {i > 0 ? <span className="timecode text-fg/30">/</span> : null}
             <button
               type="button"
               onClick={() => setStep(s.key)}
@@ -336,8 +336,8 @@ export function ReportWizard() {
               aria-current={step === s.key ? "step" : undefined}
               className={`timecode rounded-md border px-3 py-1.5 ${
                 step === s.key
-                  ? "border-amber text-amber"
-                  : "border-line text-paper/50 hover:text-paper"
+                  ? "border-accent text-accent"
+                  : "border-line text-muted hover:text-fg"
               }`}
             >
               {i + 1}. {s.label}
@@ -364,7 +364,7 @@ export function ReportWizard() {
                 aria-label="Camera preview"
               />
             ) : (
-              <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 text-paper/50">
+              <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 text-muted">
                 <Camera className="size-10" aria-hidden />
                 <p className="text-sm">Start the camera, or upload what you recorded.</p>
               </div>
@@ -422,19 +422,19 @@ export function ReportWizard() {
                       className="aspect-video w-full object-cover"
                     />
                   ) : (
-                    <div className="flex aspect-video w-full items-center justify-center bg-black/40 text-paper/60">
+                    <div className="flex aspect-video w-full items-center justify-center bg-black/40 text-muted">
                       <Video className="size-8" aria-hidden />
                     </div>
                   )}
                   <button
                     type="button"
                     aria-label={`Remove attachment ${i + 1}`}
-                    className="absolute right-1.5 top-1.5 rounded-full border border-line bg-ink/80 p-1 text-paper/80 hover:text-flag"
+                    className="absolute right-1.5 top-1.5 rounded-full border border-line bg-bg/80 p-1 text-fg/90 hover:text-danger"
                     onClick={() => removeMedia(i)}
                   >
                     <X className="size-4" aria-hidden />
                   </button>
-                  <p className="timecode truncate border-t hairline px-2 py-1 text-paper/50">
+                  <p className="timecode truncate border-t hairline px-2 py-1 text-muted">
                     {m.type}
                   </p>
                 </li>
@@ -448,7 +448,7 @@ export function ReportWizard() {
         <section aria-label="Step 2: pin location" className="space-y-4">
           <PinMap pin={pin} onPin={setPin} />
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-paper/70">
+            <p className="text-sm text-fg/80">
               Tap the map to place the pin at the exact spot. Drag it to fine-tune.
             </p>
             <button type="button" className="btn" onClick={getLocation}>
@@ -457,7 +457,7 @@ export function ReportWizard() {
             </button>
           </div>
           {pin ? (
-            <p className="timecode rounded-md border hairline bg-surface/60 px-3 py-2 text-amber">
+            <p className="timecode rounded-md border hairline bg-surface/60 px-3 py-2 text-accent">
               PIN {pin.lat.toFixed(5)},{pin.lon.toFixed(5)}
               {pin.accuracy !== null ? ` · ±${pin.accuracy}m GPS` : ""}
             </p>
@@ -538,7 +538,7 @@ export function ReportWizard() {
 
           <fieldset className="space-y-3 rounded-md border hairline p-4">
             <legend className="label px-1">Before you submit</legend>
-            <p className="text-xs text-paper/50">
+            <p className="text-xs text-muted">
               Submitting waives deletion of this footage once published (see Terms).
             </p>
             <label className="check">
@@ -555,7 +555,7 @@ export function ReportWizard() {
           </fieldset>
 
           {busy ? (
-            <p className="timecode text-paper/50">Uploading and filing…</p>
+            <p className="timecode text-muted">Uploading and filing…</p>
           ) : null}
         </section>
       ) : null}
@@ -589,8 +589,8 @@ export function ReportWizard() {
         )}
       </div>
 
-      <p className="mt-6 flex items-start gap-2 text-sm text-paper/60">
-        <MapPin className="mt-0.5 size-4 shrink-0 text-amber" aria-hidden />
+      <p className="mt-6 flex items-start gap-2 text-sm text-muted">
+        <MapPin className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
         <span>
           Your location is stored to the precision of the map pin you chose. Only
           record if it is safe to do so.

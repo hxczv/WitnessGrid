@@ -64,7 +64,7 @@ export function LoadMore({
             {isFetchingNextPage ? "Loading…" : "Load more records"}
           </button>
         ) : (
-          <p className="timecode text-paper/60">— end of register —</p>
+          <p className="timecode text-muted">— end of register —</p>
         )}
       </div>
     </section>
