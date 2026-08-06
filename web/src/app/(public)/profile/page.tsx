@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, LogOut, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { listMyIncidents } from "@/lib/api";
@@ -16,6 +16,12 @@ export default function ProfilePage() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const clear = useAuthStore((s) => s.clear);
+  const queryClient = useQueryClient();
+
+  const signOut = () => {
+    clear();
+    queryClient.clear();
+  };
 
   const mine = useQuery({
     queryKey: ["my-incidents"],
@@ -49,7 +55,7 @@ export default function ProfilePage() {
               <RefreshCw className="size-4" aria-hidden />
               Refresh
             </button>
-            <button type="button" className="btn" onClick={() => clear()}>
+            <button type="button" className="btn" onClick={signOut}>
               <LogOut className="size-4" aria-hidden />
               Sign out
             </button>

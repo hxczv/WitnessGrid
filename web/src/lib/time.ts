@@ -1,4 +1,4 @@
-import { formatForce, type Incident, type IncidentType, type PoliceForce } from "@/lib/contract";
+import { formatForce, type Incident, type IncidentType } from "@/lib/contract";
 
 const MONTHS = [
   "JAN",
@@ -53,10 +53,6 @@ export function formatLocal(iso: string): string {
 }
 
 /** First `len` hex digits of a sha256, presented as a hash chip. */
-export function hashPreview(hash: string, len = 4): string {
-  return `#${hash.slice(0, len)}…`;
-}
-
 export function hash8(hash: string): string {
   return `#${hash.slice(0, 8)}`;
 }
@@ -90,10 +86,6 @@ function firstHash(incident: Incident): string {
 
 export function typeLabel(type: IncidentType): string {
   return type.replaceAll("_", " ");
-}
-
-export function forceLabel(force: PoliceForce): string {
-  return formatForce(force);
 }
 
 /** Default date-range bounds for filters, in UTC ISO form. */

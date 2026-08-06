@@ -7,7 +7,7 @@ const STATIC_PAGES = [
   { path: "/", priority: 1 },
   { path: "/map", priority: 0.9 },
   { path: "/about", priority: 0.6 },
-  { path: "/signin", priority: 0.3 },
+  { path: "/stats", priority: 0.5 },
   { path: "/terms", priority: 0.3 },
   { path: "/content-policy", priority: 0.3 },
   { path: "/privacy", priority: 0.3 },

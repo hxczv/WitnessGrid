@@ -1,6 +1,7 @@
 import { defaultCache } from "@serwist/next/worker";
 import { CacheFirst, ExpirationPlugin, NetworkFirst, Serwist } from "serwist";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
+import { tileHostname } from "@/lib/map-tiles";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -36,7 +37,8 @@ const serwist = new Serwist({
       }),
     },
     {
-      matcher: ({ url }) => url.hostname.includes("tile.openstreetmap.org"),
+      // Cache whichever raster tile host is configured (see lib/map-tiles).
+      matcher: ({ url }) => url.hostname.includes(tileHostname()),
       method: "GET",
       handler: new CacheFirst({
         cacheName: "wg-tiles",

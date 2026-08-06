@@ -1,16 +1,9 @@
+import { Section } from "@/components/section";
+
 export const metadata = {
   title: "Content policy",
   description: "What may and may not be published on the WitnessGrid register.",
 };
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-8">
-      <h2 className="font-display text-lg font-bold">{title}</h2>
-      <div className="mt-2 space-y-3 text-paper/80">{children}</div>
-    </section>
-  );
-}
 
 export default function ContentPolicyPage() {
   return (

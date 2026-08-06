@@ -1,18 +1,10 @@
 import Link from "next/link";
+import { Section } from "@/components/section";
 
 export const metadata = {
   title: "Terms of use",
   description: "The terms that govern your use of WitnessGrid.",
 };
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-8">
-      <h2 className="font-display text-lg font-bold">{title}</h2>
-      <div className="mt-2 space-y-3 text-paper/80">{children}</div>
-    </section>
-  );
-}
 
 export default function TermsPage() {
   return (

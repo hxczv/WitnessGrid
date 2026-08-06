@@ -6,7 +6,6 @@ import {
   formatLocal,
   formatUTC,
   hash8,
-  hashPreview,
   incidentTimecodeParts,
   isValidIso,
   typeLabel,
@@ -65,8 +64,7 @@ describe("formatLocal", () => {
 });
 
 describe("hash helpers", () => {
-  it("previews hash chips", () => {
-    expect(hashPreview("abcdef01", 4)).toBe("#abcd…");
+  it("renders 8-digit hash chips", () => {
     expect(hash8("a".repeat(64))).toBe(`#${"a".repeat(8)}`);
   });
 });

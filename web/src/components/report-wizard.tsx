@@ -1,16 +1,15 @@
 "use client";
 
 import { Camera, Check, ImagePlus, LocateFixed, MapPin, RotateCcw, ShieldAlert, Upload, Video, X } from "lucide-react";
-import maplibregl from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { INCIDENT_TYPES, POLICE_FORCES, type IncidentType, type MediaType, type PoliceForce } from "@/lib/contract";
+import { formatForce, INCIDENT_TYPES, POLICE_FORCES, type IncidentType, type MediaType, type PoliceForce } from "@/lib/contract";
 import { makeFlushApi } from "@/lib/app-flush";
 import { makeThumbnail, normalizeMediaType, sha256Hex, startClipRecorder, stopMediaStream, takePhoto, type ClipRecorder } from "@/lib/media";
-import { baseMapStyle } from "@/lib/map-tiles";
 import { createSubmissionQueue, flushQueue, type QueuedMedia, type QueuedSubmission } from "@/lib/offline-queue";
 import { getSessionToken } from "@/lib/session";
+import { typeLabel } from "@/lib/time";
 import { useAuthStore } from "@/store/auth";
 import { StatusBanner } from "@/components/status-banner";
 
@@ -22,16 +21,13 @@ interface Pin {
   accuracy: number | null;
 }
 
-function uuid4(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
+// maplibre-gl is heavy, so the pin map only loads when the wizard reaches
+// the pin step instead of landing in the /report critical bundle.
+const PinMap = dynamic(() => import("@/components/map/pin-map").then((m) => m.PinMap), {
+  loading: () => (
+    <div className="aspect-[4/3] w-full animate-pulse rounded-md border hairline bg-surface" />
+  ),
+});
 
 function nowLocalValue(): string {
   const d = new Date();
@@ -53,57 +49,8 @@ function parseCollarNumbers(raw: string): string[] {
     .slice(0, 5);
 }
 
-function PinMap({ pin, onPin }: { pin: Pin | null; onPin: (p: Pin) => void }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const pinRef = useRef<Pin | null>(pin);
-  pinRef.current = pin;
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const map = new maplibregl.Map({
-      container,
-      style: baseMapStyle(),
-      center: [pinRef.current?.lon ?? -1.5, pinRef.current?.lat ?? 52.7],
-      zoom: pinRef.current ? 14 : 5.5,
-      attributionControl: { compact: true },
-    });
-
-    let marker: maplibregl.Marker | null = null;
-    const placePin = (lng: number, lat: number) => {
-      onPin({ lat, lon: lng, accuracy: null });
-      marker?.remove();
-      const el = document.createElement("div");
-      el.style.width = "26px";
-      el.style.height = "38px";
-      el.style.transform = "translate(-50%, -100%)";
-      el.style.backgroundImage = `url("data:image/svg+xml;utf8,${encodeURIComponent(
-        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="26" height="38" fill="none"><path d="M12 2C7.6 2 4 5.6 4 10c0 6 8 12 8 12s8-6 8-12c0-4.4-3.6-8-8-8z" fill="#E8A33D" stroke="#12151C" stroke-width="1.5"/><circle cx="12" cy="10" r="3" fill="#12151C"/></svg>`,
-      )}")`;
-      marker = new maplibregl.Marker({ element: el, draggable: true })
-        .setLngLat([lng, lat])
-        .addTo(map);
-      marker.on("dragend", () => {
-        const pos = marker?.getLngLat();
-        if (pos) onPin({ lat: pos.lat, lon: pos.lng, accuracy: null });
-      });
-    };
-
-    map.on("load", () => {
-      if (pinRef.current) placePin(pinRef.current.lon, pinRef.current.lat);
-    });
-    map.on("click", (e) => {
-      const { lng, lat } = e.lngLat;
-      placePin(lng, lat);
-    });
-    return () => {
-      marker?.remove();
-      map.remove();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return <div ref={containerRef} className="aspect-[4/3] w-full overflow-hidden rounded-md border hairline" data-testid="pin-map" />;
+function historyOf(v: string): boolean {
+  return v.length > 0 && !Number.isNaN(new Date(v).getTime());
 }
 
 const STEPS: ReadonlyArray<{ key: Step; label: string }> = [
@@ -267,15 +214,12 @@ export function ReportWizard() {
     if (!over16) return false;
     return true;
   }
-  function historyOf(v: string): boolean {
-    return v.length > 0 && !Number.isNaN(new Date(v).getTime());
-  }
 
   const submit = async () => {
     if (!pin) return;
     setBusy(true);
     setError(null);
-    const clientId = uuid4();
+    const clientId = crypto.randomUUID();
     const parsedCount = officerCount.trim() ? Math.max(0, Math.min(100, parseInt(officerCount, 10) || 0)) : null;
     const collar = parseCollarNumbers(collarNumbers);
     const timestampIso = new Date(timestamp).toISOString();
@@ -296,22 +240,22 @@ export function ReportWizard() {
       created_at: Date.now(),
     };
 
-      const queue = createSubmissionQueue();
-      try {
-        await queue.enqueue(submission);
-        const sessionToken = getSessionToken();
-        if (sessionToken) {
-          const result = await flushQueue(queue, makeFlushApi(sessionToken), sessionToken);
-          if (result.submitted.includes(clientId) || result.dropped.includes(clientId)) {
-            setDone({ offline: false });
-            return;
-          }
+    const queue = createSubmissionQueue();
+    try {
+      await queue.enqueue(submission);
+      const sessionToken = getSessionToken();
+      if (sessionToken) {
+        const result = await flushQueue(queue, makeFlushApi(sessionToken), sessionToken);
+        if (result.submitted.includes(clientId) || result.dropped.includes(clientId)) {
+          setDone({ offline: false });
+          return;
         }
-        setDone({ offline: true });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not save the report.");
-        setBusy(false);
       }
+      setDone({ offline: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save the report.");
+      setBusy(false);
+    }
   };
 
   if (done) {
@@ -335,7 +279,7 @@ export function ReportWizard() {
         ) : null}
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link href={token ? "/profile" : "/"} className="btn btn-primary">
-            {hasQueued() ? "See your records" : "Back to the register"}
+            {done.offline ? "See your records" : "Back to the register"}
           </Link>
           <button
             type="button"
@@ -529,7 +473,7 @@ export function ReportWizard() {
               <select className="field" value={incidentType} onChange={(e) => setIncidentType(e.target.value as IncidentType)}>
                 {INCIDENT_TYPES.map((t) => (
                   <option key={t} value={t}>
-                    {t.replaceAll("_", " ")}
+                    {typeLabel(t)}
                   </option>
                 ))}
               </select>
@@ -539,7 +483,7 @@ export function ReportWizard() {
               <select className="field" value={policeForce} onChange={(e) => setPoliceForce(e.target.value as PoliceForce)}>
                 {POLICE_FORCES.map((f) => (
                   <option key={f} value={f}>
-                    {f.replaceAll("_", " ")}
+                    {formatForce(f)}
                   </option>
                 ))}
               </select>
@@ -654,8 +598,4 @@ export function ReportWizard() {
       </p>
     </div>
   );
-
-  function hasQueued(): boolean {
-    return Boolean(done && done.offline);
-  }
 }

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import nextDynamic from "next/dynamic";
 import { notFound } from "next/navigation";
-import { getIncident, serverApiBaseUrl, type IncidentDetail } from "@/lib/api";
+import { cache } from "react";
+import { ApiClientError, getIncident, serverApiBaseUrl, type IncidentDetail } from "@/lib/api";
 import { formatForce, type Incident } from "@/lib/contract";
 import { formatLocal, formatUTC, hash8, incidentTimecodeParts, typeLabel } from "@/lib/time";
 import { DeleteIncident } from "@/components/delete-incident";
@@ -19,13 +20,17 @@ const MiniMap = nextDynamic(() => import("@/components/map/mini-map").then((m) =
   ),
 });
 
-async function fetchIncident(id: string): Promise<IncidentDetail | null> {
+// Cached so generateMetadata and the page share one request. Only a real 404
+// maps to "not found"; any other failure (outage, timeout) propagates to the
+// error boundary instead of hiding as a missing record.
+const fetchIncident = cache(async (id: string): Promise<IncidentDetail | null> => {
   try {
     return await getIncident(id, { baseUrl: serverApiBaseUrl() });
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof ApiClientError && err.status === 404) return null;
+    throw err;
   }
-}
+});
 
 type Props = { params: Promise<{ id: string }> };
 

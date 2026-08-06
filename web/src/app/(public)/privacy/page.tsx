@@ -1,18 +1,10 @@
 import Link from "next/link";
+import { Section } from "@/components/section";
 
 export const metadata = {
   title: "Privacy notice",
   description: "How WitnessGrid handles your data and your right to erasure.",
 };
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-8">
-      <h2 className="font-display text-lg font-bold">{title}</h2>
-      <div className="mt-2 space-y-3 text-paper/80">{children}</div>
-    </section>
-  );
-}
 
 export default function PrivacyPage() {
   return (

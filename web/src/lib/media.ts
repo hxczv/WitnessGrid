@@ -9,15 +9,13 @@ export const MEDIA_TYPES: readonly MediaType[] = [
 ];
 
 export const MAX_THUMBNAIL_DIM = 1280;
-export const MAX_COMPRESS_DIM = 1280;
-export const COMPRESS_FPS = 24;
 
 export function isVideoType(type: string): boolean {
   return type.startsWith("video/");
 }
 
 /** Map a contract media type to its file extension. */
-export function extForType(type: MediaType): string {
+export function extFor(type: MediaType): string {
   switch (type) {
     case "image/jpeg":
       return "jpg";
@@ -32,15 +30,6 @@ export function extForType(type: MediaType): string {
     default:
       return "bin";
   }
-}
-
-/**
- * Object key shape used when naming staged media. The backend issues the
- * final key on `POST /upload`; this helper is the client-side form used to
- * derive names/fallbacks that match the same `media/…` namespace.
- */
-export function mediaObjectKeyFor(hash: string, ext: string): string {
-  return `media/${hash.slice(0, 2)}/${hash}.${ext}`;
 }
 
 /** Normalize a browser-reported MIME type into a contract media type, or null if not accepted. */
@@ -182,130 +171,4 @@ export function startClipRecorder(stream: MediaStream): ClipRecorder {
 
 export function stopMediaStream(stream: MediaStream | null): void {
   stream?.getTracks().forEach((t) => t.stop());
-}
-
-export interface CompressionCallbacks {
-  onProgress(ratio: number): void;
-  onDone(blob: Blob): void;
-  onError(err: Error): void;
-}
-
-/**
- * Re-record a video through MediaRecorder as WebM. Real-time playback means
- * the recording's duration is preserved exactly; the copy is not shortened.
- * Returns a cancel function. When the browser cannot capture audio alongside
- * the re-recorded frames the copy carries video only.
- */
-export function compressVideo(file: File, cb: CompressionCallbacks): () => void {
-  const sourceUrl = URL.createObjectURL(file);
-  const video = document.createElement("video");
-  video.src = sourceUrl;
-  video.muted = true;
-  video.volume = 0;
-  video.playsInline = true;
-  video.preload = "auto";
-
-  let recorder: MediaRecorder | null = null;
-  let raf = 0;
-  let cancelled = false;
-
-  const cleanup = () => {
-    cancelAnimationFrame(raf);
-    URL.revokeObjectURL(sourceUrl);
-  };
-
-  const finish = (blob: Blob) => {
-    cleanup();
-    if (!cancelled) cb.onDone(blob);
-  };
-
-  video.onloadedmetadata = () => {
-    if (cancelled) return;
-    const width = video.videoWidth || 640;
-    const height = video.videoHeight || 360;
-    const scale = Math.min(1, MAX_COMPRESS_DIM / Math.max(width, height));
-    const w = Math.round(width * scale);
-    const h = Math.round(height * scale);
-
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      cb.onError(new Error("2d canvas unavailable"));
-      return;
-    }
-
-    let stream: MediaStream;
-    let native = true;
-    if (typeof video.captureStream === "function") {
-      try {
-        stream = video.captureStream();
-        if (stream.getVideoTracks().length === 0) throw new Error("no video track");
-      } catch {
-        native = false;
-        stream = canvas.captureStream(COMPRESS_FPS);
-      }
-    } else {
-      native = false;
-      stream = canvas.captureStream(COMPRESS_FPS);
-    }
-
-    const candidates = [
-      "video/webm;codecs=vp9,opus",
-      "video/webm;codecs=vp8,opus",
-      "video/webm;codecs=vp8",
-      "video/webm",
-    ];
-    const mimeType = candidates.find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
-    recorder = new MediaRecorder(
-      stream,
-      mimeType ? { mimeType, videoBitsPerSecond: 2_500_000 } : { videoBitsPerSecond: 2_500_000 },
-    );
-    const chunks: BlobPart[] = [];
-    recorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) chunks.push(e.data);
-    };
-    recorder.onerror = () => cb.onError(new Error("MediaRecorder failed during compression"));
-    recorder.onstop = () => {
-      stream.getTracks().forEach((t) => t.stop());
-      finish(new Blob(chunks, { type: recorder?.mimeType || "video/webm" }));
-    };
-
-    video.onended = () => {
-      if (recorder && recorder.state !== "inactive") recorder.stop();
-    };
-    video.ontimeupdate = () => {
-      const d = video.duration;
-      if (Number.isFinite(d) && d > 0) cb.onProgress(Math.min(1, video.currentTime / d));
-    };
-
-    if (!native) {
-      const draw = () => {
-        if (cancelled || video.ended || video.paused) return;
-        ctx.drawImage(video, 0, 0, w, h);
-        raf = requestAnimationFrame(draw);
-      };
-      draw();
-    }
-    recorder.start(250);
-    void video.play().catch((e) => {
-      if (!cancelled) cb.onError(e instanceof Error ? e : new Error(String(e)));
-    });
-  };
-  video.onerror = () => {
-    if (!cancelled) cb.onError(new Error("Could not decode the video for compression"));
-  };
-
-  return () => {
-    cancelled = true;
-    if (recorder && recorder.state !== "inactive") {
-      try {
-        recorder.stop();
-      } catch {
-        /* already stopped */
-      }
-    }
-    cleanup();
-  };
 }

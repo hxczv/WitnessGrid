@@ -41,7 +41,3 @@ export const useAuthStore = create<AuthState>()(
     },
   ),
 );
-
-export function isAuthed(state: AuthState): boolean {
-  return Boolean(state.token && state.user);
-}

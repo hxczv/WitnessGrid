@@ -1,5 +1,6 @@
 import { openDB } from "idb";
 import { isApiError } from "@/lib/api";
+import { extFor } from "@/lib/media";
 import type {
   Incident,
   IncidentCreate,
@@ -142,21 +143,4 @@ export async function flushQueue(
     }
   }
   return result;
-}
-
-function extFor(type: MediaType): string {
-  switch (type) {
-    case "image/jpeg":
-      return "jpg";
-    case "image/png":
-      return "png";
-    case "image/webp":
-      return "webp";
-    case "video/webm":
-      return "webm";
-    case "video/mp4":
-      return "mp4";
-    default:
-      return "bin";
-  }
 }

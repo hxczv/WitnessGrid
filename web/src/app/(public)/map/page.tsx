@@ -18,8 +18,10 @@ const MapView = dynamic(
 );
 
 export default function MapPage() {
+  // The root shell reserves 5rem for the mobile bottom nav, so the map only
+  // gets full viewport height from lg up.
   return (
-    <main className="relative h-dvh w-full overflow-hidden">
+    <main className="relative h-[calc(100dvh-5rem)] w-full overflow-hidden lg:h-dvh">
       <MapView />
     </main>
   );
