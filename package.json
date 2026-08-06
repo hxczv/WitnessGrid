@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
     "test": "pnpm -r test",
+    "migrate": "pnpm --filter @witnessgrid/infra migrate",
+    "migrate:dry": "pnpm --filter @witnessgrid/infra migrate:dry",
+    "seed": "pnpm --filter @witnessgrid/infra seed",
     "dev": "pnpm --parallel --filter @witnessgrid/backend --filter @witnessgrid/web dev"
   },
   "devDependencies": {
