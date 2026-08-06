@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { databaseUrl, isDryRun, listMigrationFiles, pendingMigrations } from './migrate.js';
+import { databaseUrl, fileChecksum, isDryRun, listMigrationFiles, pendingMigrations } from './migrate.js';
 
 test('isDryRun detects --dry-run flag', () => {
   assert.equal(isDryRun(['--dry-run']), true);
@@ -49,4 +49,10 @@ test('pendingMigrations filters out already-applied files', () => {
   assert.deepEqual(pendingMigrations(files, new Set(['0001_init.sql'])), ['0002_second.sql']);
   assert.deepEqual(pendingMigrations(files, new Set(['0001_init.sql', '0002_second.sql'])), []);
   assert.deepEqual(pendingMigrations(files, new Set()), files);
+});
+
+test('fileChecksum is deterministic and content-sensitive', () => {
+  assert.equal(fileChecksum('SELECT 1;'), fileChecksum('SELECT 1;'));
+  assert.notEqual(fileChecksum('SELECT 1;'), fileChecksum('SELECT 2;'));
+  assert.match(fileChecksum('SELECT 1;'), /^[0-9a-f]{64}$/);
 });

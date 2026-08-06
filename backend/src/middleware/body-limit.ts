@@ -1,12 +1,11 @@
-import type { Context, Next } from 'hono';
-import { ApiError, errorCodes } from '../errors.js';
+import { bodyLimit } from 'hono/body-limit';
+import { errorCodes } from '../errors.js';
 
-const MAX_JSON_BYTES = 1024 * 1024;
+export const MAX_JSON_BYTES = 1024 * 1024;
 
-export async function jsonBodyLimit(c: Context, next: Next): Promise<void> {
-  const length = Number(c.req.header('content-length') ?? '0');
-  if (length > MAX_JSON_BYTES) {
-    throw new ApiError(errorCodes.VALIDATION, `request body too large (max ${MAX_JSON_BYTES} bytes)`);
-  }
-  await next();
-}
+// Streaming limit: counts request bytes as they arrive, so chunked requests
+// without a content-length header cannot bypass it.
+export const jsonBodyLimit = bodyLimit({
+  maxSize: MAX_JSON_BYTES,
+  onError: (c) => c.json({ error: { code: errorCodes.VALIDATION, message: 'request body too large (max 1048576 bytes)' } }, 413),
+});

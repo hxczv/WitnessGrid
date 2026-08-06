@@ -30,3 +30,12 @@ export function validationError(error: ZodError): ApiError {
   const message = first ? `${first.path.join('.') || 'body'}: ${first.message}` : 'invalid request body';
   return new ApiError(errorCodes.VALIDATION, message);
 }
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Route params are compared against uuid columns; rejecting malformed ids
+// here turns what would be a Postgres cast error (500) into a 400.
+export function assertUuid(value: string, label = 'id'): string {
+  if (!UUID_PATTERN.test(value)) throw new ApiError(errorCodes.VALIDATION, `invalid ${label}`);
+  return value;
+}

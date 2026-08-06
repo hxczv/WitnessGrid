@@ -1,73 +1,70 @@
+import { appendFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { config } from './config.js';
-import { ApiError, errorCodes } from './errors.js';
 
-export async function sendMagicLink(email: string, url: string): Promise<void> {
-  if (config.RESEND_API_KEY) {
+export const DEV_MAIL_LOG = join(process.cwd(), '.dev-mail.log');
+
+interface Mail {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+}
+
+// With RESEND_API_KEY set the mail goes through Resend; without it the mail is
+// appended to .dev-mail.log so local development works without an SMTP account.
+async function sendMail(mail: Mail): Promise<void> {
+  const apiKey = config.RESEND_API_KEY;
+  if (apiKey) {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: {
-        authorization: `Bearer ${config.RESEND_API_KEY}`,
-        'content-type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: config.EMAIL_FROM,
-        to: [email],
-        subject: 'WitnessGrid sign-in link',
-        text: `Sign in to WitnessGrid with this link (valid ${config.MAGIC_LINK_TTL_MINUTES} minutes): ${url}`,
-        html: `<p>Sign in to WitnessGrid with this link (valid ${config.MAGIC_LINK_TTL_MINUTES} minutes):</p><p><a href="${url}">${url}</a></p>`,
+        to: [mail.to],
+        subject: mail.subject,
+        text: mail.text,
+        ...(mail.html ? { html: mail.html } : {}),
       }),
     });
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      throw new ApiError(errorCodes.STORAGE, `email provider error ${response.status}: ${body.slice(0, 300)}`);
+      throw new Error(`Resend responded ${response.status}: ${body}`);
     }
     return;
   }
-  console.log(`[dev-mail] magic link for ${email}: ${url}`);
+
+  console.log(`[dev-mail] to=${mail.to}\n${mail.subject}\n${mail.text}`);
   try {
-    const fs = await import('node:fs');
-    const logUrl = new URL('../.dev-mail.log', import.meta.url);
-    fs.appendFileSync(logUrl, `${JSON.stringify({ at: new Date().toISOString(), email, url })}\n`);
+    await appendFile(DEV_MAIL_LOG, `${new Date().toISOString()} to=${mail.to}\n${mail.subject}\n${mail.text}\n\n`);
   } catch {
-    /* dev-mail log is best-effort */
+    // The log file is a convenience for local sign-in; never block on it.
   }
 }
 
-export async function sendAreaAlert(
-  email: string,
-  areaName: string,
-  detailUrl: string,
-): Promise<void> {
-  if (config.RESEND_API_KEY) {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        authorization: `Bearer ${config.RESEND_API_KEY}`,
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: config.EMAIL_FROM,
-        to: [email],
-        subject: `[area-alert] New incident recorded in "${areaName}"`,
-        text: `A new incident was recorded inside your saved area "${areaName}". Details: ${detailUrl}`,
-        html: `<p>A new incident was recorded inside your saved area <strong>${areaName}</strong>.</p><p><a href="${detailUrl}">${detailUrl}</a></p>`,
-      }),
-    });
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      throw new ApiError(errorCodes.STORAGE, `email provider error ${response.status}: ${body.slice(0, 300)}`);
+export async function sendMagicLink(to: string, link: string): Promise<void> {
+  await sendMail({
+    to,
+    subject: 'WitnessGrid sign-in link',
+    text: `Use this link to sign in to WitnessGrid (valid for ${config.MAGIC_LINK_TTL_MINUTES} minutes):\n\n${link}`,
+    html: `<p>Use this link to sign in to WitnessGrid (valid for ${config.MAGIC_LINK_TTL_MINUTES} minutes):</p><p><a href="${link}">${link}</a></p>`,
+  });
+}
+
+export async function sendAreaAlert(to: string, areaName: string, incidentUrl: string): Promise<void> {
+  const apiKey = config.RESEND_API_KEY;
+  if (!apiKey) {
+    console.log(`[dev-mail] saved-area alert to=${to} area="${areaName}" ${incidentUrl}`);
+    try {
+      await appendFile(DEV_MAIL_LOG, `[dev-mail] saved-area alert to=${to} area="${areaName}" ${incidentUrl}\n`);
+    } catch {
+      // The log file is a convenience for local development; never block on it.
     }
     return;
   }
-  console.log(`[dev-mail] saved-area alert for ${email}: ${areaName} — ${detailUrl}`);
-  try {
-    const fs = await import('node:fs');
-    const logUrl = new URL('../.dev-mail.log', import.meta.url);
-    fs.appendFileSync(
-      logUrl,
-      `${JSON.stringify({ at: new Date().toISOString(), email, areaName, detailUrl })}\n`,
-    );
-  } catch {
-    /* dev-mail log is best-effort */
-  }
+  await sendMail({
+    to,
+    subject: `New incident recorded in your saved area "${areaName}"`,
+    text: `A new incident was recorded inside your saved area "${areaName}".\n\nView the record: ${incidentUrl}`,
+  });
 }

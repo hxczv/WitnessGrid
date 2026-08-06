@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 import { ListIncidentsQuerySchema } from '@witnessgrid/contract';
-import { ApiError, errorCodes, validationError } from '../errors.js';
-import { optionalAuth, requireAuth } from '../middleware/auth.js';
-import { getIncident, getRatingSummary, listIncidents, listUserIncidents } from '../repo.js';
+import { ApiError, errorCodes, assertUuid, validationError } from '../errors.js';
+import { authedUserId, optionalAuth, requireAuth } from '../middleware/auth.js';
+import { getIncident, listIncidents, listUserIncidents } from '../repo/incidents.js';
+import { getRatingSummary } from '../repo/ratings.js';
 import type { AppEnv } from '../env.js';
 
 export const listRoutes = new Hono<AppEnv>();
@@ -14,16 +15,13 @@ listRoutes.get('/incidents', async (c) => {
 });
 
 listRoutes.get('/incidents/mine', requireAuth, async (c) => {
-  const userId = c.get('userId');
-  if (!userId) throw new ApiError(errorCodes.UNAUTHORIZED, 'authentication required');
   const parsed = ListIncidentsQuerySchema.safeParse(c.req.query());
   if (!parsed.success) throw validationError(parsed.error);
-  return c.json(await listUserIncidents(userId, parsed.data));
+  return c.json(await listUserIncidents(authedUserId(c), parsed.data));
 });
 
 listRoutes.get('/incident/:id', optionalAuth, async (c) => {
-  const id = c.req.param('id');
-  if (!id) throw new ApiError(errorCodes.NOT_FOUND, 'incident not found');
+  const id = assertUuid(c.req.param('id'));
   const incident = await getIncident(id, c.get('userId') ?? null);
   if (!incident) throw new ApiError(errorCodes.NOT_FOUND, 'incident not found');
   const summary = await getRatingSummary(id, c.get('userId') ?? null);

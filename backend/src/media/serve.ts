@@ -1,7 +1,11 @@
 import { Hono, type Handler } from 'hono';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { createWriteStream } from 'node:fs';
+import { mkdir, rename } from 'node:fs/promises';
+import { once } from 'node:events';
 import path from 'node:path';
 import { ApiError, errorCodes } from '../errors.js';
+import { setUploadGrantHash } from '../repo/upload-grants.js';
 import { verifyMediaToken } from './token.js';
 import {
   assertSafeKey,
@@ -13,24 +17,35 @@ import { config } from '../config.js';
 
 export const mediaServeRoutes = new Hono();
 
-async function sinkBody(c: Parameters<Handler>[0]): Promise<Uint8Array> {
+// Streams the request body straight to disk in chunks and computes the SHA-256
+// as it goes — memory stays flat regardless of file size, and the resulting
+// digest is stored on the upload grant so incident creation can verify the
+// client-declared hash against the actual bytes.
+async function streamBodyToFile(c: Parameters<Handler>[0], filePath: string): Promise<string> {
   const body = c.req.raw.body;
   if (!body) throw new ApiError(errorCodes.VALIDATION, 'request body required');
-  const chunks: Uint8Array[] = [];
+
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const tmpPath = `${filePath}.part`;
+  const writer = createWriteStream(tmpPath);
+  const hash = createHash('sha256');
   const reader = body.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      hash.update(value);
+      if (!writer.write(value)) await once(writer, 'drain');
+    }
+    writer.end();
+    await once(writer, 'close');
+    await rename(tmpPath, filePath);
+    return hash.digest('hex');
+  } catch (err) {
+    writer.destroy();
+    throw err;
   }
-  const total = chunks.reduce((n, chunk) => n + chunk.byteLength, 0);
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    out.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return out;
 }
 
 const handleMediaUpload: Handler = async (c) => {
@@ -43,10 +58,9 @@ const handleMediaUpload: Handler = async (c) => {
   const valid = await verifyMediaToken(key, token);
   if (!valid) throw new ApiError(errorCodes.UNAUTHORIZED, 'invalid or expired media token');
 
-  const bytes = await sinkBody(c);
   const filePath = path.join(config.LOCAL_MEDIA_DIR, ...key.split('/'));
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, bytes);
+  const digest = await streamBodyToFile(c, filePath);
+  await setUploadGrantHash(key, digest);
   return new Response(null, { status: 200 });
 };
 
@@ -55,7 +69,12 @@ mediaServeRoutes.put('/media/upload', handleMediaUpload);
 mediaServeRoutes.post('/media/upload', handleMediaUpload);
 
 const handleMediaGet: Handler = async (c) => {
-  const key = decodeURIComponent(c.req.path.slice('/media/'.length));
+  let key: string;
+  try {
+    key = decodeURIComponent(c.req.path.slice('/media/'.length));
+  } catch {
+    throw new ApiError(errorCodes.VALIDATION, 'invalid media path');
+  }
   assertSafeKey(key);
 
   if (store.mode === 'local') {

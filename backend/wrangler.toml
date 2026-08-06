@@ -1,21 +1,19 @@
 name = "witnessgrid-api"
-main = "src/index.ts"
+main = "src/worker.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Placeholders — override secrets via .dev.vars locally and real values in
-# Cloudflare dashboard / CI secrets in production.
+# Non-sensitive settings only. Secrets live outside this file — set them with
+# `wrangler secret put <NAME>` (or .dev.vars locally):
+#   JWT_SECRET        session signing secret (>= 32 chars, openssl rand -hex 32)
+#   DATABASE_URL      Postgres connection string (Neon, Supabase, ...)
+#   R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_ACCOUNT_ID / R2_BUCKET
+#                     only needed when OBJECT_STORE = "r2"
+#   RESEND_API_KEY    email delivery
 [vars]
 PUBLIC_ORIGIN = "https://witnessgrid.app"
 BASE_URL = "https://witnessgrid-api.<account>.workers.dev"
-JWT_SECRET = "replace-with-at-least-32-char-random-secret"
-DATABASE_URL = "postgres://user:password@host/database"
 OBJECT_STORE = "r2"
-LOCAL_MEDIA_DIR = "./.media"
 EMAIL_FROM = "WitnessGrid <noreply@witnessgrid.app>"
 MAGIC_LINK_TTL_MINUTES = "15"
 PLATFORM = "workers"
-
-[[r2_buckets]]
-binding = "R2"
-bucket_name = "witnessgrid-media"

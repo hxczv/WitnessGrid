@@ -1,48 +1,48 @@
+import type { Context, MiddlewareHandler } from 'hono';
 import type { SessionUser } from '@witnessgrid/contract';
-import type { Context, Next } from 'hono';
-import { verifySessionJwt } from '../auth/jwt.js';
-import { ApiError, errorCodes } from '../errors.js';
 import type { AppEnv } from '../env.js';
+import { ApiError, errorCodes } from '../errors.js';
+import { verifySessionJwt } from '../auth/jwt.js';
+import { getUserById } from '../repo/users.js';
 
-type AuthContext = Context<AppEnv>;
+// Reads the bearer token and confirms the user still exists. Without the DB
+// check, a deleted account's token (valid up to 30 days) would authenticate
+// and then fail on foreign keys when writing.
 
-function bearerToken(c: AuthContext): string {
-  const header = c.req.header('authorization');
-  if (header?.startsWith('Bearer ')) return header.slice('Bearer '.length).trim();
-  return '';
-}
-
-async function verify(c: AuthContext, token: string): Promise<void> {
-  const payload = await verifySessionJwt(token);
-  const sub = payload.sub;
-  if (!sub || typeof payload.username !== 'string' || typeof payload.email !== 'string') {
-    throw new ApiError(errorCodes.UNAUTHORIZED, 'invalid or expired token');
-  }
-  const user: SessionUser = { id: sub, username: payload.username, email: payload.email };
-  c.set('userId', sub);
-  c.set('sessionUser', user);
-}
-
-export async function requireAuth(c: AuthContext, next: Next): Promise<void> {
-  const token = bearerToken(c);
-  if (!token) throw new ApiError(errorCodes.UNAUTHORIZED, 'authentication required');
+async function sessionFromToken(c: Context<AppEnv>): Promise<SessionUser | null> {
+  const header = c.req.header('Authorization');
+  if (!header?.startsWith('Bearer ')) return null;
   try {
-    await verify(c, token);
-  } catch (err) {
-    if (err instanceof ApiError) throw err;
-    throw new ApiError(errorCodes.UNAUTHORIZED, 'invalid or expired token');
+    const payload = await verifySessionJwt(header.slice(7));
+    if (typeof payload.sub !== 'string') return null;
+    const user = await getUserById(payload.sub);
+    if (!user) return null;
+    return { id: user.id, username: user.username, email: user.email };
+  } catch {
+    return null;
   }
-  await next();
 }
 
-export async function optionalAuth(c: AuthContext, next: Next): Promise<void> {
-  const token = bearerToken(c);
-  if (token) {
-    try {
-      await verify(c, token);
-    } catch {
-      // treat as guest
-    }
+export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const user = await sessionFromToken(c);
+  if (!user) throw new ApiError(errorCodes.UNAUTHORIZED, 'authentication required');
+  c.set('userId', user.id);
+  c.set('sessionUser', user);
+  await next();
+};
+
+export const optionalAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const user = await sessionFromToken(c);
+  if (user) {
+    c.set('userId', user.id);
+    c.set('sessionUser', user);
   }
   await next();
+};
+
+// After requireAuth, userId is always set; this accessor encodes that.
+export function authedUserId(c: Context<AppEnv>): string {
+  const userId = c.get('userId');
+  if (!userId) throw new ApiError(errorCodes.UNAUTHORIZED, 'authentication required');
+  return userId;
 }

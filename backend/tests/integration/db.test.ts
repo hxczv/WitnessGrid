@@ -3,8 +3,8 @@ import type { IncidentCreate } from '@witnessgrid/contract';
 import { app } from '../../src/app.js';
 import { db } from '../../src/db.js';
 import { signSessionJwt } from '../../src/auth/jwt.js';
-import { createUser, ensureRateLimitTable } from '../../src/repo.js';
-import type { UserRow } from '../../src/repo.js';
+import { createUser } from '../../src/repo/users.js';
+import type { UserRow } from '../../src/repo/users.js';
 
 const enabled = process.env.RUN_DB_TESTS === '1';
 
@@ -28,6 +28,13 @@ describe.skipIf(!enabled)('db integration', () => {
     'content-type': 'application/json',
     ...(token ? { authorization: `Bearer ${token}` } : {}),
   });
+
+  function userIdFromJwt(token: string): string {
+    const segment = token.split('.')[1];
+    if (!segment) throw new Error('malformed JWT in test');
+    const payload = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8')) as { sub: string };
+    return payload.sub;
+  }
 
   async function makeUser(label: string): Promise<{ user: UserRow; token: string }> {
     const user = await createUser(emailFor(label), usernameFor(label));
@@ -59,7 +66,16 @@ describe.skipIf(!enabled)('db integration', () => {
     };
   }
 
+  // Media keys must carry an upload grant belonging to the poster; the tests
+  // insert grants directly so the incident flow stays the subject under test.
   async function postIncident(token: string, payload: IncidentCreate): Promise<Response> {
+    const userId = userIdFromJwt(token);
+    for (const media of payload.media) {
+      await db`
+        INSERT INTO media_grants (key, user_id, content_type)
+        VALUES (${media.key}, ${userId}, ${media.type})
+      `;
+    }
     return app.request('http://localhost:8787/incident', {
       method: 'POST',
       headers: jsonHeaders(token),
@@ -68,13 +84,14 @@ describe.skipIf(!enabled)('db integration', () => {
   }
 
   beforeAll(async () => {
-    await ensureRateLimitTable();
     try {
       await db`SELECT 1 FROM users LIMIT 1`;
+      await db`SELECT 1 FROM rate_limit LIMIT 1`;
+      await db`SELECT 1 FROM media_grants LIMIT 1`;
     } catch (err) {
       throw new Error(
         `integration suite could not reach the WitnessGrid schema: ${(err as Error).message}. ` +
-          'Run `node infra/db/migrate.ts` against DATABASE_URL first.',
+          'Run `pnpm migrate` against DATABASE_URL first.',
       );
     }
   });
@@ -84,6 +101,7 @@ describe.skipIf(!enabled)('db integration', () => {
       await db`DELETE FROM users WHERE id IN ${db(createdUsers)}`;
     }
     await db`DELETE FROM incidents WHERE user_id IS NULL AND created_at >= ${runStartedAt}`;
+    await db`DELETE FROM media_grants WHERE created_at >= ${runStartedAt}`;
     await db.end();
   });
 
@@ -122,6 +140,55 @@ describe.skipIf(!enabled)('db integration', () => {
     expect(body.error.code).toBe('conflict');
   });
 
+  it('issues upload credentials bound to the requesting user', async () => {
+    const { user, token } = await makeUser('upload');
+    const res = await app.request('http://localhost:8787/upload', {
+      method: 'POST',
+      headers: jsonHeaders(token),
+      body: JSON.stringify({ filename: 'evidence.jpg', contentType: 'image/jpeg' }),
+    });
+    expect(res.status).toBe(200);
+    const upload = await res.json();
+    expect(upload.key).toMatch(/^media\//);
+    expect(upload.upload_url).toContain('/media/upload');
+    expect(upload.headers['x-media-token']).toBeTruthy();
+
+    const grants = await db`SELECT user_id, content_type FROM media_grants WHERE key = ${upload.key}`;
+    expect(grants.length).toBe(1);
+    expect(grants[0]?.user_id).toBe(user.id);
+    expect(grants[0]?.content_type).toBe('image/jpeg');
+  });
+
+  it('rejects incident media without an upload grant', async () => {
+    const { token } = await makeUser('nogrant');
+    const payload = incidentPayload();
+    const res = await app.request('http://localhost:8787/incident', {
+      method: 'POST',
+      headers: jsonHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.message).toContain('not uploaded');
+  });
+
+  it('rejects incident media granted to a different user', async () => {
+    const { user: other } = await makeUser('grant_other');
+    const { token } = await makeUser('grant_thief');
+    const payload = incidentPayload();
+    const media = payload.media[0];
+    if (!media) throw new Error('payload has no media');
+    await db`
+      INSERT INTO media_grants (key, user_id, content_type)
+      VALUES (${media.key}, ${other.id}, ${media.type})
+    `;
+    const res = await app.request('http://localhost:8787/incident', {
+      method: 'POST',
+      headers: jsonHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    expect(res.status).toBe(400);
+  });
+
   it('forbids deletion by a non-owner', async () => {
     const { token: ownerToken } = await makeUser('del_owner');
     const { token: otherToken } = await makeUser('del_other');
@@ -150,6 +217,16 @@ describe.skipIf(!enabled)('db integration', () => {
 
     const detail = await app.request(`http://localhost:8787/incident/${id}`);
     expect(detail.status).toBe(404);
+  });
+
+  it('returns 400 for malformed ids and cursors instead of 500', async () => {
+    const badId = await app.request('http://localhost:8787/incident/not-a-uuid');
+    expect(badId.status).toBe(400);
+
+    const badCursor = await app.request(
+      `http://localhost:8787/incidents?cursor=${encodeURIComponent('garbage:cursor:here')}`,
+    );
+    expect(badCursor.status).toBe(400);
   });
 
   it('filters by bounding box to only in-polygon points', async () => {
@@ -219,7 +296,8 @@ describe.skipIf(!enabled)('db integration', () => {
       console.log = originalLog;
     }
 
-    expect(logged).toContain('/auth/verify?token=');
+    // Links point at the web app's sign-in page, which auto-verifies.
+    expect(logged).toContain('/signin?token=');
     const url = (logged ?? '').split(' ').pop();
     expect(url).toBeTruthy();
     const token = new URL(url as string).searchParams.get('token');
@@ -251,15 +329,54 @@ describe.skipIf(!enabled)('db integration', () => {
     expect(replay.status).toBe(400);
   });
 
+  it('treats differently cased emails as one account', async () => {
+    const email = emailFor('case');
+    const first = await app.request('http://localhost:8787/auth/magic-link', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ email: email.toUpperCase(), username: usernameFor('case') }),
+    });
+    expect(first.status).toBe(200);
+    const second = await app.request('http://localhost:8787/auth/magic-link', {
+      method: 'POST',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ email: email.toLowerCase() }),
+    });
+    // No username error means the lowercase lookup found the account created
+    // with the uppercase address.
+    expect(second.status).toBe(200);
+  });
+
   it('requires a username when the email is unknown', async () => {
     const res = await app.request('http://localhost:8787/auth/magic-link', {
       method: 'POST',
       headers: jsonHeaders(),
-      body: JSON.stringify({ email: emailFor('nouesr') }),
+      body: JSON.stringify({ email: emailFor('nouser') }),
     });
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error.code).toBe('validation_error');
     expect(body.error.message).toContain('username required');
+  });
+
+  it('invalidates sessions when the account is deleted', async () => {
+    const { token } = await makeUser('gone');
+    const del = await app.request('http://localhost:8787/auth/me', {
+      method: 'DELETE',
+      headers: jsonHeaders(token),
+    });
+    expect(del.status).toBe(200);
+
+    const me = await app.request('http://localhost:8787/auth/me', {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(me.status).toBe(401);
+
+    const post = await app.request('http://localhost:8787/incident', {
+      method: 'POST',
+      headers: jsonHeaders(token),
+      body: JSON.stringify(incidentPayload()),
+    });
+    expect(post.status).toBe(401);
   });
 });

@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { StatsQuerySchema } from '@witnessgrid/contract';
-import { ApiError, errorCodes, validationError } from '../errors.js';
-import { requireAuth } from '../middleware/auth.js';
-import { getStatsMe, getStatsPublic } from '../repo.js';
+import { validationError } from '../errors.js';
+import { authedUserId, requireAuth } from '../middleware/auth.js';
+import { getStatsMe, getStatsPublic } from '../repo/stats.js';
 import type { AppEnv } from '../env.js';
 
 export const statsRoutes = new Hono<AppEnv>();
@@ -14,7 +14,5 @@ statsRoutes.get('/stats', async (c) => {
 });
 
 statsRoutes.get('/stats/me', requireAuth, async (c) => {
-  const userId = c.get('userId');
-  if (!userId) throw new ApiError(errorCodes.UNAUTHORIZED, 'authentication required');
-  return c.json(await getStatsMe(userId));
+  return c.json(await getStatsMe(authedUserId(c)));
 });

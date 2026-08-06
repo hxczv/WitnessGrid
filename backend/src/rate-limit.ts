@@ -1,59 +1,57 @@
-import type { Context, Next } from 'hono';
-import { sha256Hex } from './auth/tokens.js';
+import type { Context, MiddlewareHandler } from 'hono';
+import { createHash } from 'node:crypto';
+import type { AppEnv } from './env.js';
 import { ApiError, errorCodes } from './errors.js';
-import { ensureRateLimitTable, rateLimitHit } from './repo.js';
+import { rateLimitHit } from './repo/rate-limit-store.js';
 
-let tableReady: Promise<void> | null = null;
+// Fixed-window rate limiting backed by Postgres, so dev (no Redis) and prod
+// share one implementation. Buckets are keyed by user id, client ip, or a
+// hash of the target email depending on what is being limited.
 
-async function readyTable(): Promise<void> {
-  if (!tableReady) {
-    tableReady = ensureRateLimitTable().catch((err: unknown) => {
-      tableReady = null;
-      throw err;
-    });
+function clientIp(c: Context<AppEnv>): string {
+  const direct = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
+  return direct ?? 'unknown';
+}
+
+export function emailHash(email: string): string {
+  return createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
+}
+
+async function limit(bucket: string, maxHits: number, windowSeconds: number): Promise<void> {
+  const { hits } = await rateLimitHit(bucket, windowSeconds);
+  if (hits > maxHits) throw new ApiError(errorCodes.RATE_LIMITED, 'rate limit exceeded');
+}
+
+export const mutateRateLimit: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const userId = c.get('userId');
+  if (!userId) throw new ApiError(errorCodes.UNAUTHORIZED, 'authentication required');
+  await limit(`user:${userId}`, 5, 10);
+  await next();
+};
+
+export const savedAreaRateLimit: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const userId = c.get('userId');
+  if (!userId) throw new ApiError(errorCodes.UNAUTHORIZED, 'authentication required');
+  await limit(`user:${userId}:saved-area`, 30, 10);
+  await next();
+};
+
+// Magic links: a small cap per target address stops the endpoint from being
+// used to spam someone's inbox, and a per-ip cap bounds anonymous abuse.
+export const magicLinkRateLimit: MiddlewareHandler<AppEnv> = async (c, next) => {
+  let email = '';
+  try {
+    const body = (await c.req.json()) as { email?: unknown };
+    if (typeof body?.email === 'string') email = body.email;
+  } catch {
+    // An unparseable body fails schema validation in the route; nothing to bucket.
   }
-  await tableReady;
-}
+  await limit(`ip:${clientIp(c)}:magic-link`, 10, 600);
+  if (email !== '') await limit(`email:${emailHash(email)}:magic-link`, 3, 600);
+  await next();
+};
 
-export interface RateLimitOptions {
-  max: number;
-  windowMs: number;
-  key: (c: Context) => string | Promise<string>;
-}
-
-export function rateLimit(options: RateLimitOptions): (c: Context, next: Next) => Promise<void> {
-  return async (c, next) => {
-    await readyTable();
-    const bucket = await options.key(c);
-    const { limited, retryAfterMs } = await rateLimitHit(bucket, options.windowMs, options.max);
-    if (limited) {
-      c.header('retry-after', String(Math.ceil(retryAfterMs / 1000)));
-      throw new ApiError(errorCodes.RATE_LIMITED, 'too many requests, slow down');
-    }
-    await next();
-  };
-}
-
-export const mutateRateLimit = rateLimit({
-  max: 5,
-  windowMs: 10_000,
-  key: (c) => c.get('userId') ?? 'anonymous',
-});
-
-// Saved areas are created in bulk (up to 10 at once), so the shared mutation
-// budget would trip on a normal onboarding flow.
-export const savedAreaRateLimit = rateLimit({
-  max: 30,
-  windowMs: 10_000,
-  key: (c) => c.get('userId') ?? 'anonymous',
-});
-
-export const magicLinkRateLimit = rateLimit({
-  max: 20,
-  windowMs: 10_000,
-  key: async (c) => {
-    const body = await c.req.json().catch(() => null);
-    const email = typeof body?.email === 'string' ? body.email : 'unknown';
-    return `magic-link:${await sha256Hex(email)}`;
-  },
-});
+export const verifyRateLimit: MiddlewareHandler<AppEnv> = async (c, next) => {
+  await limit(`ip:${clientIp(c)}:auth-verify`, 20, 600);
+  await next();
+};

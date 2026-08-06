@@ -98,3 +98,40 @@ INSERT INTO officers (id, incident_id, collar_number) VALUES
   ('00000000-0000-4000-8000-300000000002', '00000000-0000-4000-8000-000000001001', 'K4822'),
   ('00000000-0000-4000-8000-300000000003', '00000000-0000-4000-8000-000000001004', '4477')
 ON CONFLICT (id) DO NOTHING;
+
+-- Community ratings (cross-user only; owners cannot rate their own incidents).
+INSERT INTO ratings (id, incident_id, user_id, appropriateness, professionalism, safety, created_at) VALUES
+  ('00000000-0000-4000-8000-400000000001', '00000000-0000-4000-8000-000000001001',
+   '00000000-0000-4000-8000-000000000002', 4, 3, 4, '2026-07-27T19:05:00Z'),
+  ('00000000-0000-4000-8000-400000000002', '00000000-0000-4000-8000-000000001006',
+   '00000000-0000-4000-8000-000000000002', 5, 4, 5, '2026-08-01T09:30:00Z'),
+  ('00000000-0000-4000-8000-400000000003', '00000000-0000-4000-8000-000000001003',
+   '00000000-0000-4000-8000-000000000001', 3, 3, 2, '2026-07-29T10:12:00Z')
+ON CONFLICT (id) DO NOTHING;
+
+-- A saved area covering central London, owned by dev_witness_1.
+INSERT INTO saved_areas (id, user_id, name, bounds, created_at) VALUES
+  ('00000000-0000-4000-8000-500000000001', '00000000-0000-4000-8000-000000000001',
+   'Central London',
+   ST_GeomFromEWKT('SRID=4326;POLYGON((
+     -0.16 51.49, -0.08 51.49, -0.08 51.53, -0.16 51.53, -0.16 51.49
+   ))')::geography,
+   '2026-07-27T07:00:00Z')
+ON CONFLICT (id) DO NOTHING;
+
+-- One alert: the King's Cross incident landed inside the saved area above.
+INSERT INTO saved_area_alerts (id, user_id, area_id, incident_id, created_at) VALUES
+  ('00000000-0000-4000-8000-600000000001',
+   '00000000-0000-4000-8000-000000000001',
+   '00000000-0000-4000-8000-500000000001',
+   '00000000-0000-4000-8000-000000001001',
+   '2026-07-27T08:16:30Z')
+ON CONFLICT (id) DO NOTHING;
+
+-- One report flag awaiting review (the moderation queue itself is Phase 3).
+INSERT INTO report_flags (id, incident_id, user_id, reason, detail, created_at) VALUES
+  ('00000000-0000-4000-8000-700000000001', '00000000-0000-4000-8000-000000001008',
+   '00000000-0000-4000-8000-000000000002', 'privacy',
+   'The recording shows the inside of the hallway through the open door; the residents may be identifiable.',
+   '2026-08-02T16:40:00Z')
+ON CONFLICT (id) DO NOTHING;

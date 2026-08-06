@@ -22,7 +22,7 @@ async function main(): Promise<void> {
     await sql`select 1`;
   } catch (err) {
     console.error(
-      'DATABASE_URL unreachable — install & start PostgreSQL + PostGIS, then run `pnpm seed` from the infra package (cd infra && pnpm seed).'
+      'DATABASE_URL unreachable — install & start PostgreSQL + PostGIS, then run `pnpm seed` from the repository root.'
     );
     console.error(`DATABASE_URL=${url}`);
     console.error(err);
@@ -54,7 +54,7 @@ async function main(): Promise<void> {
     }
     console.log(`Materialised ${mediaRows.length} seed media objects under ${mediaDir}.`);
   } catch (err) {
-    console.error('Seed failed. If tables are missing, run `pnpm migrate` from the infra package first.');
+    console.error('Seed failed. If tables are missing, run `pnpm migrate` from the repository root first.');
     console.error(err);
     process.exit(1);
   } finally {

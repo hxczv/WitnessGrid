@@ -3,8 +3,8 @@ import type { IncidentCreate } from '@witnessgrid/contract';
 import { app } from '../../src/app.js';
 import { db } from '../../src/db.js';
 import { signSessionJwt } from '../../src/auth/jwt.js';
-import { createUser, ensureRateLimitTable } from '../../src/repo.js';
-import type { UserRow } from '../../src/repo.js';
+import { createUser } from '../../src/repo/users.js';
+import type { UserRow } from '../../src/repo/users.js';
 
 const enabled = process.env.RUN_DB_TESTS === '1';
 
@@ -54,6 +54,15 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
   }
 
   async function postIncident(token: string, payload: IncidentCreate): Promise<Response> {
+    const segment = token.split('.')[1];
+    if (!segment) throw new Error('malformed JWT in test');
+    const claims = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8')) as { sub: string };
+    for (const media of payload.media) {
+      await db`
+        INSERT INTO media_grants (key, user_id, content_type)
+        VALUES (${media.key}, ${claims.sub}, ${media.type})
+      `;
+    }
     return app.request('http://localhost:8787/incident', {
       method: 'POST',
       headers: jsonHeaders(token),
@@ -79,13 +88,14 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
   }
 
   beforeAll(async () => {
-    await ensureRateLimitTable();
     try {
       await db`SELECT 1 FROM users LIMIT 1`;
+      await db`SELECT 1 FROM rate_limit LIMIT 1`;
+      await db`SELECT 1 FROM media_grants LIMIT 1`;
     } catch (err) {
       throw new Error(
         `integration suite could not reach the WitnessGrid schema: ${(err as Error).message}. ` +
-          'Run `node infra/db/migrate.ts` against DATABASE_URL first.',
+          'Run `pnpm migrate` against DATABASE_URL first.',
       );
     }
   });
@@ -330,7 +340,7 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
         location: alertRegion.center,
       });
 
-      let mailLines: string[] = [];
+      const mailLines: string[] = [];
       const originalLog = console.log;
       console.log = (msg: unknown) => {
         if (typeof msg === 'string' && msg.includes('[dev-mail] saved-area alert')) {
@@ -468,10 +478,11 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
       expect(listed).toBeTruthy();
       expect(listed.username).toBeNull();
 
+      // The deleted account's token no longer authenticates.
       const areas = await app.request('http://localhost:8787/saved-areas', {
         headers: jsonHeaders(victim.token),
       });
-      expect((await areas.json())).toEqual([]);
+      expect(areas.status).toBe(401);
 
       const ratedSummary = await app.request(`http://localhost:8787/ratings/${rated}`);
       const ratedBody = await ratedSummary.json();
