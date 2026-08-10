@@ -3,7 +3,9 @@ import { signIn } from "./helpers";
 
 test("the public register is browsable without an account", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /the public register/i })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /every police interaction, recorded by witnesses/i }),
+  ).toBeVisible();
 });
 
 test("signing in via a magic link survives navigation", async ({ page }) => {

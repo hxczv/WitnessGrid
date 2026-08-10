@@ -28,6 +28,11 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().min(1).default('WitnessGrid <noreply@witnessgrid.app>'),
   MAGIC_LINK_TTL_MINUTES: z.coerce.number().int().positive().default(15),
+  // Rate caps on the magic-link endpoint: per client IP and per target email,
+  // each over a 10-minute fixed window. Higher local values make repeat dev
+  // runs (e.g. the Playwright suite) practical without easing prod defaults.
+  MAGIC_LINK_IP_LIMIT: z.coerce.number().int().positive().default(10),
+  MAGIC_LINK_EMAIL_LIMIT: z.coerce.number().int().positive().default(3),
   PLATFORM: z.enum(['node', 'workers']).default('node'),
   PORT: z.coerce.number().int().positive().default(8787),
 });
