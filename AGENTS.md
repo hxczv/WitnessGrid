@@ -12,4 +12,5 @@
 - Backend (`backend/`): `pnpm typecheck`, `pnpm lint`, `pnpm vitest run` (unit), plus integration: `RUN_DB_TESTS=1 pnpm vitest run tests/integration/db.test.ts` against a live Postgres (`DATABASE_URL=postgres://postgres:postgres@localhost:5432/witnessgrid`); truncate `rate_limit` first.
 - Web (`web/`): `pnpm typecheck`, `pnpm lint`, `pnpm vitest run`.
 - E2E (`web/`): `RUN_E2E=1 pnpm e2e` — requires the dev servers (API on 8787, web on 3000) running and `backend/.env` with `MAGIC_LINK_IP_LIMIT=100`.
+  - Start the API (`backend/`): `pnpm dev` (tsx watch). Start the web app (`web/`): `pnpm dev` (next dev). They are long-running background processes; if e2e fails with "Cannot reach the API (Failed to fetch)" or connection refused, the servers have died — restart them and rerun.
 - CI runs the same gate: typecheck, lint, unit + integration tests.
