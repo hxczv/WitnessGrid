@@ -18,8 +18,7 @@ export async function latestTokenFor(email: string, timeoutMs = 10_000): Promise
   while (Date.now() < deadline) {
     if (fs.existsSync(DEV_MAIL_LOG)) {
       const blocks = fs.readFileSync(DEV_MAIL_LOG, "utf8").split(blockPrefix);
-      for (let i = blocks.length - 1; i >= 0; i--) {
-        const block = blocks[i];
+      for (const block of [...blocks].reverse()) {
         if (!block.includes(email)) continue;
         const m = block.match(/token=([0-9a-f]+)/);
         if (m?.[1]) return decodeURIComponent(m[1]);
