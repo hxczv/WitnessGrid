@@ -9,6 +9,20 @@ jobs:
   build:
     name: Install, typecheck, test
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: witnessgrid
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,8 +45,22 @@ jobs:
       - name: Test all workspaces
         run: pnpm -r test
 
-      - name: Lint backend (if configured)
-        run: pnpm --filter @witnessgrid/backend run --if-present lint
+      - name: Lint backend and web
+        run: pnpm --filter @witnessgrid/backend lint && pnpm --filter @witnessgrid/web lint
+
+      - name: Migrate the CI database (PostGIS service)
+        working-directory: infra
+        run: pnpm install && pnpm migrate
+
+      - name: Backend integration tests (with PostGIS service)
+        working-directory: backend
+        env:
+          RUN_DB_TESTS: "1"
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/witnessgrid
+          JWT_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          PUBLIC_ORIGIN: http://localhost:3000
+          BASE_URL: http://localhost:8787
+        run: pnpm test
 
   # Deployment is intentionally disabled for now: no hosting credentials exist yet
   # (Cloudflare Workers + R2 secrets, hosted Postgres URL). Once credentials exist,
