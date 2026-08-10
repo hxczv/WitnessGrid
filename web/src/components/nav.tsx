@@ -28,6 +28,7 @@ export function Nav() {
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const token = useAuthStore((s) => s.token);
+  const hydrated = useAuthStore((s) => s.hydrated);
   const username = useAuthStore((s) => s.user?.username);
   const clear = useAuthStore((s) => s.clear);
 
@@ -65,7 +66,7 @@ export function Nav() {
           ))}
         </nav>
         <div className="border-t hairline p-3">
-          {token ? (
+          {!hydrated ? null : token ? (
             <div className="flex flex-col gap-2">
               <Link
                 href="/profile"

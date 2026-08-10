@@ -6,6 +6,7 @@ const LINKS = [
   { href: "/terms", label: "Terms" },
   { href: "/content-policy", label: "Content policy" },
   { href: "/privacy", label: "Privacy" },
+  { href: "/contact", label: "Contact" },
 ] as const;
 
 export function Footer() {

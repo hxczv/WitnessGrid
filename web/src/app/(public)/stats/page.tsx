@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { getStatsPublic, serverApiBaseUrl } from "@/lib/api";
+import type { StatsPeriod } from "@/lib/contract";
 import { formatForce } from "@/lib/contract";
 import { typeLabel } from "@/lib/time";
 import { BarChart, LineChart } from "@/components/charts";
+import { PeriodSwitch } from "@/components/period-switch";
 import { StatusBanner } from "@/components/status-banner";
 import { Tartan } from "@/components/tartan";
 
@@ -13,11 +15,19 @@ export const metadata: Metadata = {
   description: "Aggregate statistics for the WitnessGrid public register.",
 };
 
-export default async function StatsPage() {
+export default async function StatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const raw = typeof sp.period === "string" ? sp.period : "30d";
+  const period: StatsPeriod = raw === "90d" || raw === "all" ? raw : "30d";
+  const periodLabel = period === "90d" ? "90" : period === "all" ? "all time" : "30";
   let stats: Awaited<ReturnType<typeof getStatsPublic>> | null = null;
   let error: string | null = null;
   try {
-    stats = await getStatsPublic("30d", { baseUrl: serverApiBaseUrl() });
+    stats = await getStatsPublic(period, { baseUrl: serverApiBaseUrl() });
   } catch (err) {
     error = err instanceof Error ? err.message : "The API could not be reached.";
   }
@@ -29,6 +39,9 @@ export default async function StatsPage() {
         <p className="mt-2 max-w-2xl text-fg/80">
           What our witnesses have recorded, in aggregate.
         </p>
+        <div className="mt-4">
+          <PeriodSwitch current={period} basePath="/stats" />
+        </div>
       </header>
       <Tartan thin />
       {error ? (
@@ -54,9 +67,9 @@ export default async function StatsPage() {
             ) : null}
           </section>
           <section className="rounded-md border hairline bg-surface/60 p-5">
-            <h2 className="label">Last 30 days</h2>
+            <h2 className="label">Last {periodLabel} days</h2>
             <LineChart
-              label="Incidents recorded per day, last 30 days"
+              label={`Incidents recorded per day, last ${periodLabel} days`}
               data={stats.series_30d.map((d) => ({ label: d.day, value: d.count }))}
             />
           </section>

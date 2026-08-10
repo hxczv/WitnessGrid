@@ -15,6 +15,7 @@ import { StatusBanner } from "@/components/status-banner";
 export default function ProfilePage() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
+  const hydrated = useAuthStore((s) => s.hydrated);
   const clear = useAuthStore((s) => s.clear);
   const queryClient = useQueryClient();
 
@@ -28,6 +29,14 @@ export default function ProfilePage() {
     queryFn: () => listMyIncidents({ limit: 50 }, { token: token ?? undefined }),
     enabled: Boolean(token),
   });
+
+  if (!hydrated) {
+    return (
+      <main className="mx-auto max-w-2xl px-4 py-16 text-center" aria-busy="true">
+        <p className="timecode text-muted">loading…</p>
+      </main>
+    );
+  }
 
   if (!token || !user) {
     return (

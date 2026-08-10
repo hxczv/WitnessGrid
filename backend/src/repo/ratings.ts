@@ -24,6 +24,7 @@ function toNumber(value: string | null | undefined): number | null {
 // Aggregate-only by design: individual ratings are never exposed, and the
 // caller's own rating (my) is included so the UI can show their previous vote.
 export async function getRatingSummary(incidentId: string, viewerId: string | null): Promise<RatingSummary> {
+  await assertVisible(incidentId, viewerId);
   const agg = await q.unsafe<Array<{ count: number; appropriateness_avg: string | null; professionalism_avg: string | null; safety_avg: string | null }>>(
     `SELECT count(*)::int AS count, ${AVG_COLUMNS} FROM ratings WHERE incident_id = $1`,
     [incidentId],
@@ -62,7 +63,22 @@ export interface UpsertRatingResult {
   incident: Incident;
 }
 
+// Matches getIncident's visibility: non-approved incidents are invisible to
+// everyone but their owner. Throwing NOT_FOUND instead of a distinct error
+// avoids leaking whether a removed or pending incident exists.
+async function assertVisible(incidentId: string, viewerId: string | null): Promise<void> {
+  const rows = await q<{ user_id: string | null; moderation_status: string }[]>`
+    SELECT user_id, moderation_status FROM incidents WHERE id = ${incidentId}
+  `;
+  const row = rows[0];
+  if (!row) throw new ApiError(errorCodes.NOT_FOUND, 'incident not found');
+  if (row.moderation_status !== 'approved' && row.user_id !== viewerId) {
+    throw new ApiError(errorCodes.NOT_FOUND, 'incident not found');
+  }
+}
+
 export async function upsertRating(incidentId: string, userId: string, ratings: RatingInput): Promise<UpsertRatingResult> {
+  await assertVisible(incidentId, userId);
   const ownerRows = await q<{ user_id: string | null }[]>`SELECT user_id FROM incidents WHERE id = ${incidentId}`;
   const owner = ownerRows[0];
   if (!owner) throw new ApiError(errorCodes.NOT_FOUND, 'incident not found');
@@ -71,8 +87,8 @@ export async function upsertRating(incidentId: string, userId: string, ratings: 
   }
 
   const rows = await q<{ user_id: string }[]>`
-    INSERT INTO ratings (user_id, incident_id, appropriateness, professionalism, safety)
-    VALUES (${userId}, ${incidentId}, ${ratings.appropriateness}, ${ratings.professionalism}, ${ratings.safety})
+    INSERT INTO ratings (id, user_id, incident_id, appropriateness, professionalism, safety)
+    VALUES (${crypto.randomUUID()}, ${userId}, ${incidentId}, ${ratings.appropriateness}, ${ratings.professionalism}, ${ratings.safety})
     ON CONFLICT (user_id, incident_id)
     DO UPDATE SET
       appropriateness = excluded.appropriateness,

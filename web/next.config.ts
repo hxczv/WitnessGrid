@@ -22,17 +22,18 @@ async function securityHeaders() {
   );
   const tileOrigin = originOf(
     process.env.NEXT_PUBLIC_MAP_TILES_URL,
-    "https://tile.openstreetmap.org",
+    "https://basemaps.cartocdn.com",
   );
+  const glyphOrigin = "https://protomaps.github.io";
 
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com data:",
+    "style-src 'self' 'unsafe-inline'",
+    `font-src 'self' https://fonts.gstatic.com data: ${glyphOrigin}`,
     `img-src 'self' data: blob: ${apiOrigin} ${tileOrigin}`,
     `media-src 'self' blob: mediastream: ${apiOrigin}`,
-    `connect-src 'self' ${apiOrigin} ${tileOrigin}`,
+    `connect-src 'self' ${apiOrigin} ${tileOrigin} ${glyphOrigin}`,
     "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",

@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
 import { INCIDENT_TYPES, POLICE_FORCES } from "@/lib/contract";
 import type { FeedFilters } from "@/lib/feed-filters";
@@ -9,9 +9,19 @@ import type { FeedFilters } from "@/lib/feed-filters";
 export function FeedFiltersBar({ initialFilters }: { initialFilters: FeedFilters }) {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useSearchParams();
   const [q, setQ] = useState(initialFilters.q);
   const [type, setType] = useState(initialFilters.type ?? "");
   const [policeForce, setPoliceForce] = useState(initialFilters.policeForce ?? "");
+
+  useEffect(() => {
+    const urlQ = params.get("q") ?? "";
+    const urlType = params.get("type") ?? "";
+    const urlForce = params.get("policeForce") ?? "";
+    setQ((prev) => (prev === urlQ ? prev : urlQ));
+    setType((prev) => (prev === urlType ? prev : urlType));
+    setPoliceForce((prev) => (prev === urlForce ? prev : urlForce));
+  }, [params]);
 
   const apply = (nextQ: string, nextType: string, nextForce: string) => {
     const params = new URLSearchParams();

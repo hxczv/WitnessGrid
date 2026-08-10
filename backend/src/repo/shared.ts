@@ -52,6 +52,7 @@ export interface IncidentBaseRow {
   timestamp: Date;
   description: string;
   officer_count: number | null;
+  location_accuracy_m: number | null;
   created_at: Date;
   view_count: number;
   moderation_status: string;
@@ -72,7 +73,7 @@ export interface OfficerRow {
 
 export const INCIDENT_SELECT = `
   SELECT i.id, i.user_id, i.client_id, i.type AS incident_type, i.police_force,
-    i."timestamp", i.description, i.officer_count, i.created_at, i.view_count, i.moderation_status,
+    i."timestamp", i.description, i.officer_count, i.location_accuracy_m, i.created_at, i.view_count, i.moderation_status,
     ST_X(i.location::geometry) AS longitude, ST_Y(i.location::geometry) AS latitude,
     u.username
   FROM incidents i

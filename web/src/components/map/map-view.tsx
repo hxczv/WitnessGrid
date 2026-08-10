@@ -3,8 +3,9 @@
 import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Supercluster from "supercluster";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LocateFixed } from "lucide-react";
 import { listIncidents } from "@/lib/api";
 import { formatForce } from "@/lib/contract";
 import {
@@ -18,6 +19,7 @@ import {
 import { defaultDateRange, typeLabel } from "@/lib/time";
 import { addVertex, closeRing, isClosed, removeLastVertex, type LngLat } from "@/lib/polygon";
 import { useAuthStore } from "@/store/auth";
+import { cssVar } from "@/lib/css-var";
 import { SavedAreaDialog } from "@/components/saved-area-dialog";
 import { StatusBanner } from "@/components/status-banner";
 import { baseMapStyle } from "@/lib/map-tiles";
@@ -42,10 +44,19 @@ const DATE_RANGES: { label: string; days: Filters["days"] }[] = [
 
 export function MapView() {
   const router = useRouter();
+  const params = useSearchParams();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const incidentsRef = useRef<Incident[]>([]);
-  const [filters, setFilters] = useState<Filters>({ type: "", policeForce: "", days: 0 });
+  const [filters, setFilters] = useState<Filters>(() => {
+    const p = new URLSearchParams(params.toString());
+    const days = Number(p.get("days") ?? "0") as Filters["days"];
+    return {
+      type: (p.get("type") as Filters["type"]) ?? "",
+      policeForce: (p.get("policeForce") as Filters["policeForce"]) ?? "",
+      days: [0, 7, 30, 90].includes(days) ? days : 0,
+    };
+  });
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -66,6 +77,31 @@ export function MapView() {
     setDrawing(false);
     setPolygon([]);
     setDialogOpen(false);
+  };
+
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (filters.type) p.set("type", filters.type);
+    if (filters.policeForce) p.set("policeForce", filters.policeForce);
+    if (filters.days > 0) p.set("days", String(filters.days));
+    const qs = p.toString();
+    void router.replace(qs ? `/map?${qs}` : "/map", { scroll: false });
+  }, [filters, router]);
+
+  const locateMe = () => {
+    const map = mapRef.current;
+    if (!map || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        map.flyTo({
+          center: [pos.coords.longitude, pos.coords.latitude],
+          zoom: Math.max(map.getZoom(), 14),
+        });
+        void fetchVisible();
+      },
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 15_000 },
+    );
   };
 
   const fetchVisible = useCallback(async () => {
@@ -103,9 +139,12 @@ export function MapView() {
     const container = containerRef.current;
     if (!container) return;
 
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: light)").matches !== true;
+    const accent = cssVar("--accent", "#E8A33D");
+    const bg = cssVar("--bg", "#12151C");
     const map = new maplibregl.Map({
       container,
-      style: baseMapStyle(),
+      style: baseMapStyle(prefersDark),
       center: [-2.8, 54.2],
       zoom: 5.5,
       attributionControl: { compact: true },
@@ -128,10 +167,10 @@ export function MapView() {
         source: "incidents",
         filter: ["has", "point_count"],
         paint: {
-          "circle-color": "#E8A33D",
+          "circle-color": accent,
           "circle-radius": ["step", ["get", "point_count"], 18, 10, 24, 25, 32],
           "circle-opacity": 0.9,
-          "circle-stroke-color": "#12151C",
+          "circle-stroke-color": bg,
           "circle-stroke-width": 2,
         },
       });
@@ -145,7 +184,7 @@ export function MapView() {
           "text-size": 11,
           "text-font": ["Noto Sans Bold"],
         },
-        paint: { "text-color": "#12151C" },
+        paint: { "text-color": bg },
       });
       map.addLayer({
         id: "incident-point",
@@ -153,9 +192,9 @@ export function MapView() {
         source: "incidents",
         filter: ["!", ["has", "point_count"]],
         paint: {
-          "circle-color": "#E8A33D",
+          "circle-color": accent,
           "circle-radius": 7,
-          "circle-stroke-color": "#12151C",
+          "circle-stroke-color": bg,
           "circle-stroke-width": 2,
         },
       });
@@ -165,13 +204,13 @@ export function MapView() {
         id: "polygon-draft-fill",
         type: "fill",
         source: "polygon-draft",
-        paint: { "fill-color": "#E8A33D", "fill-opacity": 0.25 },
+        paint: { "fill-color": accent, "fill-opacity": 0.25 },
       });
       map.addLayer({
         id: "polygon-draft-line",
         type: "line",
         source: "polygon-draft",
-        paint: { "line-color": "#E8A33D", "line-width": 2 },
+        paint: { "line-color": accent, "line-width": 2 },
       });
 
       map.on("click", (e) => {
@@ -289,10 +328,11 @@ export function MapView() {
     <div className="relative h-full w-full">
       <div ref={containerRef} className="absolute inset-0" data-testid="map" />
 
-      {/* Filter panel */}
-      <div className="panel absolute left-3 top-3 z-10 w-[min(20rem,calc(100vw-1.5rem))] rounded-md p-3">
-        <p className="label">Register filters</p>
-        <div className="flex flex-col gap-2">
+      {/* Filter panel + error banner, stacked in one column */}
+      <div className="absolute left-3 top-3 z-10 flex w-[min(20rem,calc(100vw-1.5rem))] flex-col gap-2">
+        <div className="panel rounded-md p-3">
+          <p className="label">Register filters</p>
+          <div className="flex flex-col gap-2">
           <label className="block">
             <span className="sr-only">Incident type</span>
             <select
@@ -342,15 +382,21 @@ export function MapView() {
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className="btn w-full"
-            onClick={() => void fetchVisible()}
-            disabled={loading}
-          >
-            Apply filters
-          </button>
-        </div>
+            <button
+              type="button"
+              className="btn w-full"
+              onClick={() => void fetchVisible()}
+              disabled={loading}
+            >
+              Apply filters
+            </button>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button type="button" className="btn flex-1" onClick={locateMe}>
+              <LocateFixed className="size-4" aria-hidden />
+              My location
+            </button>
+          </div>
         {user ? (
           drawing ? (
             <div className="mt-3 border-t hairline pt-3">
@@ -392,6 +438,15 @@ export function MapView() {
             </button>
           )
         ) : null}
+        </div>
+        {error ? (
+          <div>
+            <StatusBanner kind="error" message="Records unavailable" detail={error} />
+            <button type="button" className="btn mt-2 w-full" onClick={() => void fetchVisible()}>
+              Retry
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {loading ? (
@@ -399,15 +454,6 @@ export function MapView() {
           <p className="timecode rounded-sm border hairline bg-surface/90 px-2 py-1 text-fg/90">
             Loading records…
           </p>
-        </div>
-      ) : null}
-
-      {error ? (
-        <div className="absolute left-3 top-3 z-20 w-[min(22rem,calc(100vw-1.5rem))]">
-          <StatusBanner kind="error" message="Records unavailable" detail={error} />
-          <button type="button" className="btn mt-2 w-full" onClick={() => void fetchVisible()}>
-            Retry
-          </button>
         </div>
       ) : null}
 

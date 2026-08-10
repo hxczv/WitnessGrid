@@ -14,7 +14,7 @@ import type { AppEnv } from '../env.js';
 
 export const authRoutes = new Hono<AppEnv>();
 
-authRoutes.post('/auth/magic-link', magicLinkRateLimit, jsonBodyLimit, async (c) => {
+authRoutes.post('/auth/magic-link', jsonBodyLimit, magicLinkRateLimit, async (c) => {
   const body = await c.req.json().catch(() => null);
   const parsed = MagicLinkRequestSchema.safeParse(body);
   if (!parsed.success) throw validationError(parsed.error);

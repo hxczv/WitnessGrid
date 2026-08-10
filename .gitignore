@@ -35,3 +35,8 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Local media + mail
+backend/.media/
+backend/.dev-mail.log
+web/.env.local

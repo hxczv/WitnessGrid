@@ -8,6 +8,29 @@ export const metadata = {
     "What WitnessGrid is, how recording works, and what makes a record evidence.",
 };
 
+const FAQ = [
+  {
+    q: "What counts as an encounter?",
+    a: "Any interaction between the public and UK police that a witness can record safely — stop and search, vehicle stops, arrests, use of force, questioning, or anything else worth keeping on the record.",
+  },
+  {
+    q: "Is my report anonymous?",
+    a: "Reports are pseudonymous. You sign in with an email and pick a username; neither your email nor your real name is ever shown. Only the username appears on records.",
+  },
+  {
+    q: "Can I delete my report?",
+    a: "Yes. From your profile, open the record and choose to withdraw it. It is removed from the register and its media is deleted immediately.",
+  },
+  {
+    q: "Are these records verified?",
+    a: "No. Every record is the witness's own account, and the register says so on every page. Timestamps, coordinates and hashes are captured at record time and can be checked, but the content is not independently verified.",
+  },
+  {
+    q: "What happens if the police object to a record?",
+    a: "Objections come through our report system and are reviewed by the team. Unlawful or harmful content is removed. Everything else stays — the register is public evidence, not a complaint channel.",
+  },
+];
+
 export default function AboutPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -76,6 +99,31 @@ export default function AboutPage() {
           .
         </p>
       </Section>
+
+      <Section title="Who runs it">
+        <p>
+          WitnessGrid is run by a small, unpaid team of volunteers. We publish our
+          code under the MIT licence, keep no advertising and no trackers, and
+          answer to our witnesses first.
+        </p>
+      </Section>
+
+      <section aria-labelledby="faq" className="mt-12">
+        <h2 id="faq" className="label">Questions witnesses ask</h2>
+        <div className="mt-4 space-y-2">
+          {FAQ.map(({ q, a }) => (
+            <details key={q} className="group rounded-md border hairline bg-surface/40 px-4 py-3">
+              <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 font-semibold">
+                {q}
+                <span aria-hidden className="timecode text-accent transition-transform group-open:rotate-90">
+                  ▸
+                </span>
+              </summary>
+              <p className="mt-2 text-sm leading-relaxed text-fg/80">{a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }

@@ -29,4 +29,12 @@ describe('jwt auth', () => {
     const token = await signSessionJwt(user, Math.floor(Date.now() / 1000) - 10);
     await expect(verifySessionJwt(token)).rejects.toThrow();
   });
+
+  it('verification requires the witnessgrid issuer and audience', async () => {
+    const token = await signSessionJwt(user);
+    await expect(verifySessionJwt(token)).resolves.toMatchObject({
+      iss: 'witnessgrid',
+      aud: 'witnessgrid-web',
+    });
+  });
 });

@@ -4,13 +4,14 @@ import { KeyRound, Mail } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { requestMagicLink, verifyMagicToken } from "@/lib/api";
+import { safeNext } from "@/lib/redirect";
 import { saveSession } from "@/lib/session";
 import { StatusBanner } from "@/components/status-banner";
 
 function SignInForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") ?? "/";
+  const next = safeNext(params.get("next"));
 
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");

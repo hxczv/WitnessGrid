@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { getIncident, rateIncident } from "@/lib/api";
 import type { RatingSummary } from "@/lib/contract";
+import { buildScores } from "@/lib/ratings";
 import { useAuthStore } from "@/store/auth";
 
 const AXES = [
@@ -129,13 +130,7 @@ export function RatingPanel({
   const count = summary?.count ?? 0;
 
   const select = (key: AxisKey, value: number) => {
-    const existing = summary?.my;
-    rate.mutate({
-      appropriateness: existing ? existing.appropriateness : value,
-      professionalism: existing ? existing.professionalism : value,
-      safety: existing ? existing.safety : value,
-      [key]: value,
-    });
+    rate.mutate(buildScores(key, value, summary?.my));
   };
 
   return (

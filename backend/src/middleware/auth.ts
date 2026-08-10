@@ -18,8 +18,16 @@ async function sessionFromToken(c: Context<AppEnv>): Promise<SessionUser | null>
     const user = await getUserById(payload.sub);
     if (!user) return null;
     return { id: user.id, username: user.username, email: user.email };
-  } catch {
-    return null;
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      'code' in err &&
+      typeof (err as { code: unknown }).code === 'string' &&
+      (err as { code: string }).code.startsWith('ERR_JWT')
+    ) {
+      return null;
+    }
+    throw err;
   }
 }
 

@@ -4,6 +4,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 import { baseMapStyle } from "@/lib/map-tiles";
+import { cssVar } from "@/lib/css-var";
 import { pinSvgDataUri } from "@/components/map/pin";
 
 export interface Pin {
@@ -23,9 +24,10 @@ export function PinMap({ pin, onPin }: { pin: Pin | null; onPin: (p: Pin) => voi
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: light)").matches !== true;
     const map = new maplibregl.Map({
       container,
-      style: baseMapStyle(),
+      style: baseMapStyle(prefersDark),
       center: [pinRef.current?.lon ?? -1.5, pinRef.current?.lat ?? 52.7],
       zoom: pinRef.current ? 14 : 5.5,
       attributionControl: { compact: true },
@@ -39,7 +41,12 @@ export function PinMap({ pin, onPin }: { pin: Pin | null; onPin: (p: Pin) => voi
       el.style.width = "26px";
       el.style.height = "38px";
       el.style.transform = "translate(-50%, -100%)";
-      el.style.backgroundImage = pinSvgDataUri(26, 38);
+      el.style.backgroundImage = pinSvgDataUri(
+        26,
+        38,
+        cssVar("--accent", "#E8A33D"),
+        cssVar("--bg", "#12151C"),
+      );
       marker = new maplibregl.Marker({ element: el, draggable: true })
         .setLngLat([lng, lat])
         .addTo(map);

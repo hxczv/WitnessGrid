@@ -22,6 +22,13 @@ export async function setUploadGrantHash(key: string, sha256: string): Promise<v
   await db`UPDATE media_grants SET sha256 = ${sha256} WHERE key = ${key}`;
 }
 
+export async function getUploadGrant(key: string): Promise<{ content_type: string } | null> {
+  const rows = await db<{ content_type: string }[]>`
+    SELECT content_type FROM media_grants WHERE key = ${key}
+  `;
+  return rows[0] ?? null;
+}
+
 export interface GrantCheckItem {
   key: string;
   declaredHash: string;

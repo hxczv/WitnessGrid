@@ -65,6 +65,7 @@ function serializeIncident(
     timestamp: row.timestamp.toISOString(),
     description: row.description,
     ...(row.officer_count !== null && { officer_count: row.officer_count }),
+    ...(row.location_accuracy_m !== null && { location_accuracy_m: row.location_accuracy_m }),
     ...(collarNumbers.length > 0 && { collar_numbers: collarNumbers }),
     media,
     created_at: row.created_at.toISOString(),
@@ -78,7 +79,10 @@ function serializeIncident(
 
 export function parseCursor(cursor: string): { createdAtIso: string; id: string } {
   try {
-    return decodeCursor(cursor);
+    const decoded = decodeCursor(cursor);
+    const parsed = new Date(decoded.createdAtIso);
+    if (Number.isNaN(parsed.getTime())) throw new Error('cursor date is not a valid date');
+    return decoded;
   } catch {
     throw new ApiError(errorCodes.VALIDATION, 'invalid cursor');
   }
@@ -105,7 +109,7 @@ export async function createIncident(input: IncidentCreate, userId: string): Pro
         to_tsvector('english', coalesce(${input.description}, ''))
       )
       RETURNING id, user_id, client_id, type AS incident_type, police_force, "timestamp", description,
-        officer_count, created_at, view_count, moderation_status,
+        officer_count, location_accuracy_m, created_at, view_count, moderation_status,
         ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude
     `;
     const row = rows[0];

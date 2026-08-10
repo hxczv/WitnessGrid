@@ -58,8 +58,11 @@ export default function PrivacyPage() {
           <Link href="/profile" className="text-accent underline-offset-4 hover:underline">
             profile
           </Link>{" "}
-          at any time. For questions, requests, or erasure beyond self-service,
-          contact us and we will respond within one month.
+          at any time. For questions, requests, or erasure beyond self-service,{" "}
+          <Link href="/contact" className="text-accent underline-offset-4 hover:underline">
+            contact us
+          </Link>{" "}
+          and we will respond within one month.
         </p>
       </Section>
 

@@ -61,6 +61,7 @@ const STEPS: ReadonlyArray<{ key: Step; label: string }> = [
 
 export function ReportWizard() {
   const token = useAuthStore((s) => s.token);
+  const hydrated = useAuthStore((s) => s.hydrated);
   const [step, setStep] = useState<Step>("capture");
   const [media, setMedia] = useState<QueuedMedia[]>([]);
   const [pin, setPin] = useState<Pin | null>(null);
@@ -216,7 +217,16 @@ export function ReportWizard() {
   }
 
   const submit = async () => {
-    if (!pin) return;
+    if (!pin) {
+      setError("Place the pin on the map before submitting.");
+      setStep("pin");
+      return;
+    }
+    if (media.length === 0) {
+      setError("Attach at least one photo or clip before submitting.");
+      setStep("capture");
+      return;
+    }
     setBusy(true);
     setError(null);
     const clientId = crypto.randomUUID();
@@ -304,7 +314,7 @@ export function ReportWizard() {
     );
   }
 
-  if (!token) {
+  if (hydrated && !token) {
     return (
       <div className="rounded-md border hairline bg-surface/60 p-8 text-center">
         <ShieldAlert className="mx-auto size-8 text-accent" aria-hidden />
@@ -326,24 +336,30 @@ export function ReportWizard() {
   return (
     <div>
       <ol className="mb-6 flex items-center gap-2" aria-label="Steps">
-        {STEPS.map((s, i) => (
-          <li key={s.key} className="flex items-center gap-2">
-            {i > 0 ? <span className="timecode text-fg/30">/</span> : null}
-            <button
-              type="button"
-              onClick={() => setStep(s.key)}
-              disabled={step === "done"}
-              aria-current={step === s.key ? "step" : undefined}
-              className={`timecode rounded-md border px-3 py-1.5 ${
-                step === s.key
-                  ? "border-accent text-accent"
-                  : "border-line text-muted hover:text-fg"
-              }`}
-            >
-              {i + 1}. {s.label}
-            </button>
-          </li>
-        ))}
+        {STEPS.map((s, i) => {
+          const blocked =
+            s.key === "pin" ? media.length === 0 : s.key === "details" ? pin === null : false;
+          return (
+            <li key={s.key} className="flex items-center gap-2">
+              {i > 0 ? <span className="timecode text-fg/30">/</span> : null}
+              <button
+                type="button"
+                onClick={() => setStep(s.key)}
+                disabled={blocked}
+                aria-current={step === s.key ? "step" : undefined}
+                className={`timecode rounded-md border px-3 py-1.5 ${
+                  step === s.key
+                    ? "border-accent text-accent"
+                    : blocked
+                      ? "cursor-not-allowed border-line text-fg/30"
+                      : "border-line text-muted hover:text-fg"
+                }`}
+              >
+                {i + 1}. {s.label}
+              </button>
+            </li>
+          );
+        })}
       </ol>
 
       {error ? <div className="mb-6"><StatusBanner kind="error" message={error} /></div> : null}

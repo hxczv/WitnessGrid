@@ -5,6 +5,7 @@ import { db } from '../../src/db.js';
 import { signSessionJwt } from '../../src/auth/jwt.js';
 import { createUser } from '../../src/repo/users.js';
 import type { UserRow } from '../../src/repo/users.js';
+import { pruneExpiredMagicTokens } from '../../src/repo/magic-tokens.js';
 
 const enabled = process.env.RUN_DB_TESTS === '1';
 
@@ -68,13 +69,16 @@ describe.skipIf(!enabled)('db integration', () => {
 
   // Media keys must carry an upload grant belonging to the poster; the tests
   // insert grants directly so the incident flow stays the subject under test.
+  // An empty token is the unauthenticated case — no grants, no user lookup.
   async function postIncident(token: string, payload: IncidentCreate): Promise<Response> {
-    const userId = userIdFromJwt(token);
-    for (const media of payload.media) {
-      await db`
-        INSERT INTO media_grants (key, user_id, content_type)
-        VALUES (${media.key}, ${userId}, ${media.type})
-      `;
+    if (token) {
+      const userId = userIdFromJwt(token);
+      for (const media of payload.media) {
+        await db`
+          INSERT INTO media_grants (key, user_id, content_type)
+          VALUES (${media.key}, ${userId}, ${media.type})
+        `;
+      }
     }
     return app.request('http://localhost:8787/incident', {
       method: 'POST',
@@ -134,7 +138,10 @@ describe.skipIf(!enabled)('db integration', () => {
     const payload = incidentPayload();
     const first = await postIncident(token, payload);
     expect(first.status).toBe(200);
-    const second = await postIncident(token, payload);
+    // Same client_id, but fresh media keys: the media-attached check must not
+    // mask the client_id idempotency conflict the client relies on.
+    const retry = incidentPayload({ client_id: payload.client_id });
+    const second = await postIncident(token, retry);
     expect(second.status).toBe(409);
     const body = await second.json();
     expect(body.error.code).toBe('conflict');
@@ -277,6 +284,51 @@ describe.skipIf(!enabled)('db integration', () => {
     expect(page2.items[0].id).toBe([...idSet].find((id) => !page1Ids.has(id)));
   });
 
+  it('serializes location_accuracy_m on created and listed incidents', async () => {
+    const { token } = await makeUser('acc');
+    const payload = incidentPayload({ location_accuracy_m: 12 });
+    const createdRes = await postIncident(token, payload);
+    expect(createdRes.status).toBe(200);
+    const created = await createdRes.json();
+    expect(created.location_accuracy_m).toBe(12);
+
+    const listRes = await app.request(
+      'http://localhost:8787/incidents?minLon=-1&minLat=50&maxLon=1&maxLat=53',
+    );
+    const list = await listRes.json();
+    expect(list.items.find((item: { id: string }) => item.id === created.id)?.location_accuracy_m).toBe(12);
+
+    const detailRes = await app.request(`http://localhost:8787/incident/${created.id}`);
+    expect(detailRes.status).toBe(200);
+    expect((await detailRes.json()).location_accuracy_m).toBe(12);
+  });
+
+  it('POST /report on a missing incident returns 404', async () => {
+    const { token } = await makeUser('report_missing');
+    const res = await app.request('http://localhost:8787/report', {
+      method: 'POST',
+      headers: jsonHeaders(token),
+      body: JSON.stringify({ incident_id: crypto.randomUUID(), reason: 'other' }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it('rating a removed incident returns 404', async () => {
+    const { token: ownerToken } = await makeUser('rate_removed_owner');
+    const { token: otherToken } = await makeUser('rate_removed_other');
+    const created = await postIncident(ownerToken, incidentPayload());
+    expect(created.status).toBe(200);
+    const id = (await created.json()).id;
+    await db`UPDATE incidents SET moderation_status = 'removed' WHERE id = ${id}`;
+
+    const res = await app.request(`http://localhost:8787/ratings/${id}`, {
+      method: 'PATCH',
+      headers: jsonHeaders(otherToken),
+      body: JSON.stringify({ appropriateness: 4, professionalism: 4, safety: 4 }),
+    });
+    expect(res.status).toBe(404);
+  });
+
   it('runs the magic-link signup → verify → session flow end to end', async () => {
     const email = emailFor('magic');
     let logged: string | null = null;
@@ -298,7 +350,7 @@ describe.skipIf(!enabled)('db integration', () => {
 
     // Links point at the web app's sign-in page, which auto-verifies.
     expect(logged).toContain('/signin?token=');
-    const url = (logged ?? '').split(' ').pop();
+    const url = String(logged ?? '').match(/https?:\/\/\S+/)?.[0];
     expect(url).toBeTruthy();
     const token = new URL(url as string).searchParams.get('token');
     expect(token).toBeTruthy();
@@ -378,5 +430,16 @@ describe.skipIf(!enabled)('db integration', () => {
       body: JSON.stringify(incidentPayload()),
     });
     expect(post.status).toBe(401);
+  });
+
+  it('prunes used and long-expired magic tokens', async () => {
+    await db`INSERT INTO magic_link_tokens (token_hash, user_id, email, expires_at, used_at)
+             VALUES ('used-hash', NULL, 'p@example.com', now() + interval '1 day', now())`;
+    await db`INSERT INTO magic_link_tokens (token_hash, user_id, email, expires_at)
+             VALUES ('expired-hash', NULL, 'p@example.com', now() - interval '2 hours')`;
+    await pruneExpiredMagicTokens(true);
+    const left = await db<{ token_hash: string }[]>`SELECT token_hash FROM magic_link_tokens`;
+    expect(left.some((r) => r.token_hash === 'used-hash')).toBe(false);
+    expect(left.some((r) => r.token_hash === 'expired-hash')).toBe(false);
   });
 });

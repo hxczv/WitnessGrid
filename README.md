@@ -23,13 +23,14 @@ infra/
   db/seed.sql        development seed data (UK incidents + dev users)
   db/migrate.ts      migration runner (tracks applied files in schema_migrations)
   db/seed.ts         seed runner
-  env/               .env examples for backend and web
+backend/.env.example  backend environment template (copy to backend/.env)
+web/.env.example      web environment template (copy to web/.env.local)
 .github/workflows/   CI (install, typecheck, test; deploy gated until credentials exist)
 ```
 
 ## Getting started
 
-Prerequisites: **Node 24**, **pnpm 9.12.0**, and **PostgreSQL with PostGIS enabled** (installed locally or reachable over TCP). PostgreSQL is not yet installed on this host — the scripts below are ready for when it is.
+Prerequisites: **Node 24**, **pnpm 9.12.0**, and **PostgreSQL with PostGIS enabled** (installed locally or reachable over TCP). Current development host runs Postgres 18 + PostGIS with a local `witnessgrid` database.
 
 ```sh
 # 1. Install workspace + standalone infra dependencies
@@ -39,9 +40,11 @@ cd infra && pnpm install && cd ..
 # 2. Create the database (or point DATABASE_URL at your PostGIS-enabled database)
 #    e.g. createdb witnessgrid, or via your preferred tooling.
 
-# 3. Review environment templates (both are commented):
-#    infra/env/backend.env.example  -> backend/.dev.vars
-#    infra/env/web.env.example      -> web/.env.local
+# 3. Copy the environment templates (both are commented):
+#    backend/.env.example -> backend/.env
+#    web/.env.example     -> web/.env.local
+#    Generate a JWT secret with:
+#    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # 4. Apply migrations, then seed development data
 cd infra
@@ -56,11 +59,16 @@ pnpm -r test
 
 `pnpm migrate:dry` prints the migration plan without connecting to a database. If the database is unreachable, `migrate`/`seed` fail loudly with instructions — they never silently pretend to succeed.
 
+## Current status
+
+Fully functional locally: web app + API + PostGIS database + seed data, with the backend integration suite running against live Postgres. Pending live deployment (credentials-gated CI), the moderation queue UI, and map clustering.
+
 ## Roadmap
 
-- **Phase 1 (in progress):** core schema + migrations + seed (this layer), Hono API with auth/upload/incident endpoints, Next.js PWA with offline capture queue and map.
-- **Phase 1.1:** moderation queue UI, ratings, statistics pages, clustering on the map.
-- **Phase 2:** supporter subscriptions, comment threads, saved area alerts, deeper geospatial analysis (cluster/trend views).
+- **Phase 1 (complete):** core schema + migrations + seed, Hono API with auth/upload/incident endpoints, Next.js PWA with offline capture queue and map.
+- **Phase 1.1 (implemented):** ratings, statistics pages, saved-area alerts.
+- **Phase 1.1 (remaining):** moderation queue UI, clustering on the map.
+- **Phase 2:** supporter subscriptions, comment threads, deeper geospatial analysis (cluster/trend views).
 
 ## License
 

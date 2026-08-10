@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
-import { listIncidents, serverApiBaseUrl } from "@/lib/api";
+import { Map } from "lucide-react";
+import Link from "next/link";
+import { getStatsPublic, listIncidents, serverApiBaseUrl } from "@/lib/api";
 import type { Incident } from "@/lib/contract";
 import { ListIncidentsQuerySchema } from "@/lib/contract";
 import type { FeedFilters } from "@/lib/feed-filters";
 import { EMPTY_FILTERS } from "@/lib/feed-filters";
 import { FeedFiltersBar } from "@/components/feed-filters";
+import { HowItWorks } from "@/components/how-it-works";
+import { LiveClock } from "@/components/live-clock";
 import { LoadMore } from "@/components/load-more";
 import { SignInCta } from "@/components/sign-in-cta";
+import { StatsBand } from "@/components/stats-band";
 import { StatusBanner } from "@/components/status-banner";
 import { Tartan } from "@/components/tartan";
 
@@ -49,20 +54,44 @@ export default async function HomePage({
       err instanceof Error && err.message ? err.message : "The API could not be reached.";
   }
 
+  let stats: Awaited<ReturnType<typeof getStatsPublic>> | null = null;
+  try {
+    stats = await getStatsPublic("30d", { baseUrl: serverApiBaseUrl() });
+  } catch {
+    stats = null;
+  }
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <header className="mb-8">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
-          The public register.
-        </h1>
-        <p className="mt-2 max-w-2xl text-fg/80">
-          Every police interaction recorded by our witnesses — a precise,
-          pseudonymous, unverified evidence register. Anyone can browse.
+        <p className="timecode flex flex-wrap items-center justify-between gap-2 border-y hairline py-2 text-muted">
+          <span>THE PUBLIC REGISTER · WITNESSGRID</span>
+          <LiveClock />
         </p>
-        <div className="mt-4">
+        <h1 className="font-display mt-6 max-w-3xl text-4xl font-extrabold tracking-tight sm:text-5xl">
+          Every police interaction,{" "}
+          <span className="text-accent">recorded by witnesses.</span>
+        </h1>
+        <p className="mt-3 max-w-2xl text-lg leading-relaxed text-fg/80">
+          WitnessGrid is a public, pseudonymous evidence register of interactions
+          between the public and UK police — timestamped, geolocated, media-backed,
+          and verified against a moderation queue. Anyone can browse; witnesses
+          record.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-3">
           <SignInCta />
+          <Link href="/map" className="btn">
+            <Map className="size-5" aria-hidden />
+            Browse the map
+          </Link>
         </div>
       </header>
+
+      {stats ? (
+        <div className="mb-8">
+          <StatsBand stats={stats} />
+        </div>
+      ) : null}
 
       <Tartan thin />
 
@@ -71,6 +100,11 @@ export default async function HomePage({
       {error ? (
         <div className="py-8">
           <StatusBanner kind="error" message={error} detail={detail ?? undefined} />
+          <p className="mt-3 text-sm text-muted">
+            The register needs its API service running. If you are viewing a live
+            deployment this is a temporary outage — the records themselves are
+            unchanged.
+          </p>
         </div>
       ) : null}
 
@@ -86,6 +120,8 @@ export default async function HomePage({
         independently verified. Timestamps and coordinates were captured at
         record time and may be adjusted by the witness.
       </p>
+
+      <HowItWorks />
     </main>
   );
 }
