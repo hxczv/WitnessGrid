@@ -192,13 +192,24 @@ async function pageIncidents(
   params: unknown[],
   limit: number,
 ): Promise<ListIncidentsResult> {
+  // created_at is selected twice: postgres.js parses timestamptz into JS Dates,
+  // which truncate microseconds, so the cursor must be built from the raw text
+  // form (to_char) or keyset pagination silently drops rows that share a
+  // millisecond with the page boundary. The session timezone may not be UTC,
+  // so the wall-clock conversion must be explicit.
   const sqlText = `
-    ${INCIDENT_SELECT}
-    WHERE ${conditions.join(' AND ')}
-    ORDER BY i.created_at DESC, i.id DESC
-    LIMIT ${limit + 1}
+    SELECT page.*, to_char(page.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS created_at_iso
+    FROM (
+      ${INCIDENT_SELECT}
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY i.created_at DESC, i.id DESC
+      LIMIT ${limit + 1}
+    ) page
+    ORDER BY page.created_at DESC, page.id DESC
   `;
-  const rows = await q.unsafe<Array<IncidentBaseRow & { username: string | null }>>(sqlText, params);
+  const rows = await q.unsafe<
+    Array<IncidentBaseRow & { username: string | null; created_at_iso: string }>
+  >(sqlText, params);
 
   const pageRows = rows.slice(0, limit);
   const { mediaByIncident, officersByIncident } = await hydrateIncidentExtras(pageRows.map((r) => r.id));
@@ -220,7 +231,7 @@ async function pageIncidents(
   let nextCursor: string | null = null;
   if (rows.length > limit) {
     const last = pageRows.at(-1);
-    if (last) nextCursor = encodeCursor(last.created_at.toISOString(), last.id);
+    if (last) nextCursor = encodeCursor(last.created_at_iso, last.id);
   }
   return { items, next_cursor: nextCursor };
 }
@@ -253,7 +264,7 @@ export async function listIncidents(query: ListIncidentsQuery): Promise<ListInci
   if (cursor !== undefined) {
     const decoded = parseCursor(cursor);
     params.push(decoded.createdAtIso, decoded.id);
-    conditions.push(`(i.created_at < $${params.length - 1} OR (i.created_at = $${params.length - 1} AND i.id < $${params.length}))`);
+    conditions.push(`(i.created_at < ($${params.length - 1}::text)::timestamptz OR (i.created_at = ($${params.length - 1}::text)::timestamptz AND i.id < $${params.length}))`);
   }
 
   return pageIncidents(conditions, params, limit);
@@ -269,7 +280,7 @@ export async function listUserIncidents(
   if (query.cursor !== undefined) {
     const decoded = parseCursor(query.cursor);
     params.push(decoded.createdAtIso, decoded.id);
-    conditions.push(`(i.created_at < $2 OR (i.created_at = $2 AND i.id < $3))`);
+    conditions.push(`(i.created_at < ($2::text)::timestamptz OR (i.created_at = ($2::text)::timestamptz AND i.id < $3))`);
   }
   return pageIncidents(conditions, params, limit);
 }

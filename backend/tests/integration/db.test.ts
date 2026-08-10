@@ -105,6 +105,10 @@ describe.skipIf(!enabled)('db integration', () => {
       await db`DELETE FROM users WHERE id IN ${db(createdUsers)}`;
     }
     await db`DELETE FROM incidents WHERE user_id IS NULL AND created_at >= ${runStartedAt}`;
+    // The same-millisecond pagination test rewrites created_at to a fixed past
+    // date, so the orphan sweep above misses its rows; they are deleted by
+    // description prefix instead.
+    await db`DELETE FROM incidents WHERE description LIKE ${'page ms item%'}`;
     await db`DELETE FROM media_grants WHERE created_at >= ${runStartedAt}`;
     await db.end();
   });
@@ -282,6 +286,43 @@ describe.skipIf(!enabled)('db integration', () => {
     expect(page1Ids.has(page2.items[0].id)).toBe(false);
     expect(page2.next_cursor).toBeNull();
     expect(page2.items[0].id).toBe([...idSet].find((id) => !page1Ids.has(id)));
+  });
+
+  it('does not drop same-millisecond rows when paginating', async () => {
+    const { token } = await makeUser('page_ms');
+    // Far out in the ocean: no seed rows share this bbox, so counts are exact.
+    const inRegion = (lon: number, lat: number) =>
+      incidentPayload({ location: { lon, lat }, description: `page ms item ${lon}` });
+    const created = await Promise.all(
+      [inRegion(170.1, 53.1), inRegion(170.2, 53.2), inRegion(170.3, 53.3)].map((payload) =>
+        postIncident(token, payload),
+      ),
+    );
+    const ids: string[] = [];
+    for (const res of created) ids.push((await res.json()).id);
+
+    // Squeeze all three rows into the same millisecond (distinct microseconds).
+    // postgres.js truncates created_at to ms, so the old cursor built from the
+    // truncated value excluded rows sharing the boundary millisecond.
+    const base = '2026-01-02T03:04:05.000000Z';
+    await Promise.all(
+      ids.map((id, i) =>
+        db`UPDATE incidents SET created_at = ${base}::timestamptz + ${(i + 1) * 100} * interval '1 microsecond' WHERE id = ${id}`,
+      ),
+    );
+
+    const route = (params: string) =>
+      app.request(`http://localhost:8787/incidents?minLon=170&minLat=53&maxLon=171&maxLat=54${params}`);
+
+    const page1Res = await route('&limit=2');
+    const page1 = await page1Res.json();
+    expect(page1.items.length).toBe(2);
+    expect(page1.next_cursor).toBeTruthy();
+
+    const page2Res = await route(`&limit=2&cursor=${encodeURIComponent(page1.next_cursor as string)}`);
+    const page2 = await page2Res.json();
+    expect(page2.items.length).toBe(1);
+    expect(page2.items[0].id).toBe(ids[0]);
   });
 
   it('serializes location_accuracy_m on created and listed incidents', async () => {
