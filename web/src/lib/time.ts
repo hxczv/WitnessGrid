@@ -93,6 +93,16 @@ export function typeLabel(type: IncidentType): string {
   return type.replaceAll("_", " ");
 }
 
+/** CSS variable holding the per-type accent hue (theme-aware). */
+export function typeAccent(type: IncidentType): string {
+  return `var(--type-${type})`;
+}
+
+/** Short record reference chip, stable across clients. */
+export function refFor(incident: Incident): string {
+  return hash8(incidentHash(incident)).slice(1);
+}
+
 /** Default date-range bounds for filters, in UTC ISO form. */
 export function defaultDateRange(daysBack: number): { startDate: string; endDate: string } {
   const end = new Date();

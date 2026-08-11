@@ -62,12 +62,12 @@ export default async function HomePage({
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-      <header className="mb-8">
-        <p className="timecode flex flex-wrap items-center justify-between gap-2 border-y hairline py-2 text-muted">
+      <header className="mb-8 border-t-2 hairline">
+        <p className="timecode flex flex-wrap items-center justify-between gap-2 border-b hairline py-2 text-muted">
           <span>THE PUBLIC REGISTER · WITNESSGRID</span>
           <LiveClock />
         </p>
-        <h1 className="font-display mt-6 max-w-3xl text-4xl font-extrabold tracking-tight sm:text-5xl">
+        <h1 className="font-display mt-8 max-w-3xl text-5xl font-extrabold leading-[1.02] tracking-tight sm:text-6xl">
           Every police interaction,{" "}
           <span className="text-accent">recorded by witnesses.</span>
         </h1>

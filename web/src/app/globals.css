@@ -16,6 +16,14 @@
   --on-accent: #12151c;
   --verified: #4f8c7d;
   --danger: #c24a3d;
+  --type-stop-and-search: #e8a33d;
+  --type-vehicle-stop: #7fa8c9;
+  --type-arrest: #d1685a;
+  --type-use-of-force: #cf7d4a;
+  --type-stop-and-question: #5ba893;
+  --type-traffic-collision: #9a86d9;
+  --type-missing-person: #d98ab0;
+  --type-other: #9aa2b0;
   color-scheme: dark;
 }
 
@@ -32,6 +40,14 @@
     --on-accent: #12151c;
     --verified: #3f7265;
     --danger: #a63a2e;
+    --type-stop-and-search: #9a6a10;
+    --type-vehicle-stop: #4a7a9e;
+    --type-arrest: #a34a3e;
+    --type-use-of-force: #9c5c2e;
+    --type-stop-and-question: #3d7c6a;
+    --type-traffic-collision: #6f5cb0;
+    --type-missing-person: #a05e82;
+    --type-other: #6a707c;
   }
 }
 

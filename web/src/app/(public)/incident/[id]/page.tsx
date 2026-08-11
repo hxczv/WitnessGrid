@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { ApiClientError, getIncident, serverApiBaseUrl, type IncidentDetail } from "@/lib/api";
 import { formatForce, type Incident } from "@/lib/contract";
-import { formatLocal, formatUTC, hash8, incidentHash, incidentTimecodeParts, typeLabel } from "@/lib/time";
+import { formatLocal, formatUTC, hash8, incidentHash, incidentTimecodeParts, refFor, typeAccent, typeLabel } from "@/lib/time";
 import { DeleteIncident } from "@/components/delete-incident";
 import { MediaGallery } from "@/components/media-gallery";
 import { RatingPanel } from "@/components/rating-panel";
@@ -58,15 +58,21 @@ export default async function IncidentPage({ params }: Props) {
   if (!incident) notFound();
 
   const tc = incidentTimecodeParts(incident);
+  const accent = typeAccent(incident.incident_type);
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
       <header className="rounded-md border hairline bg-surface/60">
+        <div aria-hidden className="h-1 w-full rounded-t-md" style={{ backgroundColor: accent }} />
         <div className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3">
           <h1 className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">
             {typeLabel(incident.incident_type)} · {formatForce(incident.police_force)}
           </h1>
-          <p className="timecode text-muted">{incident.view_count} views</p>
+          <p className="timecode text-muted">
+            <span className="text-fg">REF {refFor(incident)}</span>
+            <span aria-hidden> · </span>
+            {incident.view_count} views
+          </p>
         </div>
         <Timecode
           parts={[
