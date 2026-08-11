@@ -8,7 +8,6 @@ Prerequisites: Node 24, pnpm 9.12.0, PostgreSQL + PostGIS (see [README](README.m
 
 ```sh
 pnpm install
-cd infra && pnpm install && cd ..
 ```
 
 ## Running checks

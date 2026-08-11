@@ -7,7 +7,7 @@ An independent, community-built register of police incidents across the United K
 - **Monorepo (pnpm workspaces)** — a single shared contract package, one API service, one web app, and a plain-SQL database layer shared between local and hosted PostgreSQL.
 - **`packages/contract`** — the single source of truth: zod schemas, enums, and API types consumed by both the backend and the web app. No duplicated type definitions anywhere.
 - **`backend`** — Hono API service. Runs on Node locally (`@hono/node-server`) and on Cloudflare Workers in production. First-party auth (email magic links + JWTs), Postgres-backed rate limiting, object-store adapter (local filesystem in dev, R2 in prod), email adapter (console in dev, Resend in prod).
-- **`web`** — Next.js 15 App Router PWA (Serwist) with MapLibre GL JS + PMTiles map, offline capture queue (IndexedDB, SHA-256 via WebCrypto, no Background Sync dependency), SSR register feed and incident pages.
+- **`web`** — Next.js 15 App Router PWA (Serwist) with a MapLibre GL JS map (raster CARTO basemap tiles), offline capture queue (IndexedDB, SHA-256 via WebCrypto, no Background Sync dependency), SSR register feed and incident pages.
 - **`infra`** — database migrations and seed data in pure SQL (PostgreSQL + PostGIS), runnable through a small Node runner, plus env templates for the services.
 - **Data layer** — PostgreSQL + PostGIS. Locations are stored as `geography(Point,4326)` for real geospatial querying (bbox filtering, future clustering). Migrations are plain SQL so the exact same schema runs locally and on hosted Postgres.
 - **Moderation & privacy** — public reads expose only `moderation_status='approved'` incidents; submissions are auto-approved in Phase 1; reporting flags feed a moderation queue.
@@ -33,9 +33,8 @@ web/.env.example      web environment template (copy to web/.env.local)
 Prerequisites: **Node 24**, **pnpm 9.12.0**, and **PostgreSQL with PostGIS enabled** (installed locally or reachable over TCP). Current development host runs Postgres 18 + PostGIS with a local `witnessgrid` database.
 
 ```sh
-# 1. Install workspace + standalone infra dependencies
+# 1. Install workspace dependencies (infra is a workspace member)
 pnpm install
-cd infra && pnpm install && cd ..
 
 # 2. Create the database (or point DATABASE_URL at your PostGIS-enabled database)
 #    e.g. createdb witnessgrid, or via your preferred tooling.
