@@ -1,4 +1,4 @@
-import { defaultCache } from "@serwist/next/worker";
+import { defaultCache } from "@serwist/turbopack/worker";
 import { CacheFirst, ExpirationPlugin, NetworkFirst, Serwist } from "serwist";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { tileHostname } from "@/lib/map-tiles";

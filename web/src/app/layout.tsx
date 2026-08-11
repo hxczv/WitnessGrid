@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Atkinson_Hyperlegible, IBM_Plex_Mono } from "next/font/google";
+import { SerwistProvider } from "@serwist/turbopack/react";
 import "./globals.css";
 import { Footer } from "@/components/footer";
 import { Nav } from "@/components/nav";
@@ -70,12 +71,14 @@ export default function RootLayout({
       className={`${archivo.variable} ${atkinson.variable} ${plex.variable}`}
     >
       <body>
-        <Providers>
-          <PwaLifecycle />
-          <Nav />
-          <div className="min-h-dvh pb-20 lg:pb-0 lg:pl-60">{children}</div>
-          <Footer />
-        </Providers>
+        <SerwistProvider swUrl="/serwist/sw.js">
+          <Providers>
+            <PwaLifecycle />
+            <Nav />
+            <div className="min-h-dvh pb-20 lg:pb-0 lg:pl-60">{children}</div>
+            <Footer />
+          </Providers>
+        </SerwistProvider>
       </body>
     </html>
   );

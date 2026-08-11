@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
-import withSerwistInit from "@serwist/next";
-import { serwistOptions } from "./serwist.config";
+import { withSerwist } from "@serwist/turbopack";
 import { tileOrigin as mapTileOrigin } from "./src/lib/map-tiles";
-
-const withSerwist = withSerwistInit(serwistOptions);
 
 function originOf(value: string | undefined, fallback: string): string {
   try {
@@ -55,6 +52,7 @@ async function securityHeaders() {
 }
 
 const nextConfig: NextConfig = {
+  agentRules: false,
   transpilePackages: ["@witnessgrid/contract"],
   reactStrictMode: true,
   async headers() {
