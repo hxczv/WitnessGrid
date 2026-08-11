@@ -123,6 +123,23 @@ describe.skipIf(!enabled)('db integration', () => {
     expect(res.status).toBe(401);
   });
 
+  it('rejects coordinates outside the UK or Ireland with 400', async () => {
+    const { token } = await makeUser('geo');
+    const foreign = await postIncident(
+      token,
+      incidentPayload({ location: { lon: 2.3522, lat: 48.8566 } }),
+    );
+    expect(foreign.status).toBe(400);
+    const body = await foreign.json();
+    expect(JSON.stringify(body)).toContain('United Kingdom or Ireland');
+
+    const inBox = await postIncident(
+      token,
+      incidentPayload({ location: { lon: -6.2603, lat: 53.3498 } }),
+    );
+    expect(inBox.status).toBe(200);
+  });
+
   it('creates an incident and it appears in the public list', async () => {
     const { token } = await makeUser('owner');
     const payload = incidentPayload({ description: 'should appear in list' });
@@ -307,11 +324,12 @@ describe.skipIf(!enabled)('db integration', () => {
 
   it('paginates with a cursor that returns a distinct second page', async () => {
     const { token } = await makeUser('page');
-    // Restrict to a unique bbox so only this test's rows are counted.
+    // Restrict to a unique bbox (inside the UK geofence) so only this test's
+    // rows are counted.
     const inRegion = (lon: number, lat: number) =>
       incidentPayload({ location: { lon, lat }, description: `page item ${lon}` });
     const created = await Promise.all(
-      [inRegion(3.1, 53.1), inRegion(3.2, 53.2), inRegion(3.3, 53.3)].map((payload) =>
+      [inRegion(2.1, 53.1), inRegion(2.2, 53.2), inRegion(2.3, 53.3)].map((payload) =>
         postIncident(token, payload),
       ),
     );
@@ -319,7 +337,7 @@ describe.skipIf(!enabled)('db integration', () => {
     for (const res of created) idSet.add((await res.json()).id);
 
     const route = (params: string) =>
-      app.request(`http://localhost:8787/incidents?minLon=3&minLat=53&maxLon=4&maxLat=54${params}`);
+      app.request(`http://localhost:8787/incidents?minLon=2&minLat=53&maxLon=3&maxLat=54${params}`);
 
     const page1Res = await route('&limit=2');
     const page1 = await page1Res.json();
@@ -337,11 +355,12 @@ describe.skipIf(!enabled)('db integration', () => {
 
   it('does not drop same-millisecond rows when paginating', async () => {
     const { token } = await makeUser('page_ms');
-    // Far out in the ocean: no seed rows share this bbox, so counts are exact.
+    // West of Ireland coasts: inside the UK geofence, with no seed rows
+    // sharing this bbox, so counts are exact.
     const inRegion = (lon: number, lat: number) =>
       incidentPayload({ location: { lon, lat }, description: `page ms item ${lon}` });
     const created = await Promise.all(
-      [inRegion(170.1, 53.1), inRegion(170.2, 53.2), inRegion(170.3, 53.3)].map((payload) =>
+      [inRegion(-10.9, 53.1), inRegion(-10.8, 53.2), inRegion(-10.7, 53.3)].map((payload) =>
         postIncident(token, payload),
       ),
     );
@@ -359,7 +378,7 @@ describe.skipIf(!enabled)('db integration', () => {
     );
 
     const route = (params: string) =>
-      app.request(`http://localhost:8787/incidents?minLon=170&minLat=53&maxLon=171&maxLat=54${params}`);
+      app.request(`http://localhost:8787/incidents?minLon=-11&minLat=53&maxLon=-10&maxLat=54${params}`);
 
     const page1Res = await route('&limit=2');
     const page1 = await page1Res.json();

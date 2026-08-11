@@ -1,4 +1,5 @@
 export * from './enums';
+export * from './geo';
 export * from './incidents';
 export * from './auth';
 export * from './report';

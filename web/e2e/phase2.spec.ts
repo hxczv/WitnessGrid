@@ -15,6 +15,19 @@ test("the map page renders a full-height map canvas", async ({ page }) => {
   await expect
     .poll(() => container.evaluate((el) => el.clientHeight), { timeout: 30_000 })
     .toBeGreaterThan(200);
+  // The camera is locked to the UK/Ireland box: maplibre refuses to zoom
+  // out past the zoom where the box fills the viewport, so hammering
+  // zoom-out must not drop the zoom (>= 5.4 = UK still fills the screen).
+  const zoomOut = page.locator(".maplibregl-ctrl-zoom-out");
+  await expect(zoomOut).toBeVisible();
+  for (let i = 0; i < 8; i++) {
+    await zoomOut.click();
+    await page.waitForTimeout(400);
+  }
+  const zoom = await page.evaluate(
+    () => (globalThis as { __wgMap?: { getZoom(): number } }).__wgMap?.getZoom(),
+  );
+  expect(zoom ?? 0).toBeGreaterThan(5.4);
 });
 
 test("search filters the register and the URL reflects the query", async ({ page }) => {

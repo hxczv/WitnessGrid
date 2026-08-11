@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 import { baseMapStyle, prefersDarkScheme } from "@/lib/map-tiles";
 import { cssVar } from "@/lib/css-var";
+import { UK_IE_BOUNDS } from "@/lib/contract";
 import { pinSvgDataUri } from "@/components/map/pin";
 
 export interface Pin {
@@ -27,8 +28,14 @@ export function PinMap({ pin, onPin }: { pin: Pin | null; onPin: (p: Pin) => voi
     const map = new maplibregl.Map({
       container,
       style: baseMapStyle(prefersDarkScheme()),
-      center: [pinRef.current?.lon ?? -1.5, pinRef.current?.lat ?? 52.7],
-      zoom: pinRef.current ? 14 : 5.5,
+      center: pinRef.current
+        ? [pinRef.current.lon, pinRef.current.lat]
+        : [UK_IE_BOUNDS.west + (UK_IE_BOUNDS.east - UK_IE_BOUNDS.west) / 2, 54.5],
+      zoom: pinRef.current ? 14 : 6,
+      maxBounds: [
+        [UK_IE_BOUNDS.west, UK_IE_BOUNDS.south],
+        [UK_IE_BOUNDS.east, UK_IE_BOUNDS.north],
+      ],
       attributionControl: { compact: true },
     });
 

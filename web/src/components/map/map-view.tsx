@@ -11,6 +11,7 @@ import { formatForce } from "@/lib/contract";
 import {
   INCIDENT_TYPES,
   POLICE_FORCES,
+  UK_IE_BOUNDS,
   type Incident,
   type IncidentType,
   type ListIncidentsQuery,
@@ -144,11 +145,16 @@ export function MapView() {
     const map = new maplibregl.Map({
       container,
       style: baseMapStyle(prefersDarkScheme()),
-      center: [-2.8, 54.2],
-      zoom: 5.5,
+      center: [UK_IE_BOUNDS.west + (UK_IE_BOUNDS.east - UK_IE_BOUNDS.west) / 2, 54.5],
+      zoom: 6,
+      maxBounds: [
+        [UK_IE_BOUNDS.west, UK_IE_BOUNDS.south],
+        [UK_IE_BOUNDS.east, UK_IE_BOUNDS.north],
+      ],
       attributionControl: { compact: true },
     });
     mapRef.current = map;
+    if (process.env.NODE_ENV === "development") (window as unknown as { __wgMap: maplibregl.Map }).__wgMap = map;
 
     let debounce: ReturnType<typeof setTimeout> | null = null;
     const onMoveEnd = () => {
@@ -159,6 +165,9 @@ export function MapView() {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
     map.on("load", () => {
+      // maxBounds alone keeps the UK/Ireland box covering the viewport —
+      // maplibre blocks zoom-out past the zoom where the box fills the
+      // screen, so other countries never come into view.
       map.addSource("incidents", { type: "geojson", data: EMPTY_FC });
       map.addLayer({
         id: "incident-cluster",

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { INCIDENT_TYPES, MODERATION_STATUSES, POLICE_FORCES } from './enums';
+import { isInsideBounds } from './geo';
 
 export const MediaTypeSchema = z.enum([
   'image/jpeg',
@@ -24,7 +25,7 @@ export const LocationSchema = z.object({
 });
 export type Location = z.infer<typeof LocationSchema>;
 
-export const IncidentCreateSchema = z.object({
+const IncidentCreateBase = z.object({
   incident_type: z.enum(INCIDENT_TYPES),
   police_force: z.enum(POLICE_FORCES),
   timestamp: z.string().datetime(),
@@ -36,9 +37,17 @@ export const IncidentCreateSchema = z.object({
   media: z.array(MediaReferenceSchema).min(1).max(20),
   client_id: z.string().uuid(),
 });
+
+export const IncidentCreateSchema = IncidentCreateBase.refine(
+  (d) => isInsideBounds(d.location.lon, d.location.lat),
+  {
+    message: 'Coordinates must be within the United Kingdom or Ireland',
+    path: ['location'],
+  },
+);
 export type IncidentCreate = z.infer<typeof IncidentCreateSchema>;
 
-export const IncidentSchema = IncidentCreateSchema.extend({
+export const IncidentSchema = IncidentCreateBase.extend({
   id: z.string().uuid(),
   user_id: z.string().uuid().nullable(),
   created_at: z.string().datetime(),
