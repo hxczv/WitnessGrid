@@ -19,7 +19,10 @@ app.use(
   cors({
     origin: (origin) => {
       if (!origin) return undefined;
-      if (origin === config.PUBLIC_ORIGIN || origin === 'http://localhost:3000') return origin;
+      if (origin === config.PUBLIC_ORIGIN) return origin;
+      // The local web dev server is only a sane peer on the Node deployment;
+      // on Workers the production origin should be the only one allowed.
+      if (config.PLATFORM === 'node' && origin === 'http://localhost:3000') return origin;
       return undefined;
     },
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

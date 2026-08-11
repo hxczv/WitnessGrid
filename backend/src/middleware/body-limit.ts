@@ -1,7 +1,7 @@
 import { bodyLimit } from 'hono/body-limit';
 import { errorCodes } from '../errors.js';
 
-export const MAX_JSON_BYTES = 1024 * 1024;
+const MAX_JSON_BYTES = 1024 * 1024;
 
 // Streaming limit: counts request bytes as they arrive, so chunked requests
 // without a content-length header cannot bypass it.

@@ -59,8 +59,8 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
     const claims = JSON.parse(Buffer.from(segment, 'base64url').toString('utf8')) as { sub: string };
     for (const media of payload.media) {
       await db`
-        INSERT INTO media_grants (key, user_id, content_type)
-        VALUES (${media.key}, ${claims.sub}, ${media.type})
+        INSERT INTO media_grants (key, user_id, content_type, sha256)
+        VALUES (${media.key}, ${claims.sub}, ${media.type}, ${media.hash})
       `;
     }
     return app.request('http://localhost:8787/incident', {
@@ -92,6 +92,7 @@ describe.skipIf(!enabled)('phase 2 db integration', () => {
       await db`SELECT 1 FROM users LIMIT 1`;
       await db`SELECT 1 FROM rate_limit LIMIT 1`;
       await db`SELECT 1 FROM media_grants LIMIT 1`;
+      await db`TRUNCATE rate_limit`;
     } catch (err) {
       throw new Error(
         `integration suite could not reach the WitnessGrid schema: ${(err as Error).message}. ` +

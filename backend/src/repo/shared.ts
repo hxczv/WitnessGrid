@@ -30,7 +30,7 @@ export const rowQuery = (tx: Db): RowQuery => tx as unknown as RowQuery;
 
 type Beginable = { begin<T>(fn: (tx: Db) => Promise<T>): Promise<T> };
 
-export function hasBegin(d: Db): d is Db & Beginable {
+function hasBegin(d: Db): d is Db & Beginable {
   return typeof (d as unknown as Partial<Beginable>).begin === 'function';
 }
 

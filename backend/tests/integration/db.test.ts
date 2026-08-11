@@ -69,14 +69,16 @@ describe.skipIf(!enabled)('db integration', () => {
 
   // Media keys must carry an upload grant belonging to the poster; the tests
   // insert grants directly so the incident flow stays the subject under test.
+  // The grant records the server-computed sha256, as a real local-mode upload
+  // would leave behind — incident creation now requires it.
   // An empty token is the unauthenticated case — no grants, no user lookup.
   async function postIncident(token: string, payload: IncidentCreate): Promise<Response> {
     if (token) {
       const userId = userIdFromJwt(token);
       for (const media of payload.media) {
         await db`
-          INSERT INTO media_grants (key, user_id, content_type)
-          VALUES (${media.key}, ${userId}, ${media.type})
+          INSERT INTO media_grants (key, user_id, content_type, sha256)
+          VALUES (${media.key}, ${userId}, ${media.type}, ${media.hash})
         `;
       }
     }
@@ -92,6 +94,9 @@ describe.skipIf(!enabled)('db integration', () => {
       await db`SELECT 1 FROM users LIMIT 1`;
       await db`SELECT 1 FROM rate_limit LIMIT 1`;
       await db`SELECT 1 FROM media_grants LIMIT 1`;
+      // Rate buckets accumulate across runs (magic-link caps are 10/600s per
+      // IP), so the suite clears them to stay reproducible on its own.
+      await db`TRUNCATE rate_limit`;
     } catch (err) {
       throw new Error(
         `integration suite could not reach the WitnessGrid schema: ${(err as Error).message}. ` +
@@ -149,6 +154,48 @@ describe.skipIf(!enabled)('db integration', () => {
     expect(second.status).toBe(409);
     const body = await second.json();
     expect(body.error.code).toBe('conflict');
+  });
+
+  it('rejects media that holds a grant but was never uploaded', async () => {
+    const { token } = await makeUser('nofile');
+    const userId = userIdFromJwt(token);
+    const payload = incidentPayload();
+    const media = payload.media[0];
+    if (!media) throw new Error('fixture payload must include media');
+    // A grant without a server-computed hash means the client skipped the
+    // PUT; the incident must not reference a file that does not exist.
+    await db`
+      INSERT INTO media_grants (key, user_id, content_type)
+      VALUES (${media.key}, ${userId}, ${media.type})
+    `;
+    const res = await app.request('http://localhost:8787/incident', {
+      method: 'POST',
+      headers: jsonHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error.message).toContain('no file received');
+  });
+
+  it('rejects media whose declared hash differs from the uploaded bytes', async () => {
+    const { token } = await makeUser('badhash');
+    const userId = userIdFromJwt(token);
+    const payload = incidentPayload();
+    const media = payload.media[0];
+    if (!media) throw new Error('fixture payload must include media');
+    await db`
+      INSERT INTO media_grants (key, user_id, content_type, sha256)
+      VALUES (${media.key}, ${userId}, ${media.type}, ${'a'.repeat(64)})
+    `;
+    const res = await app.request('http://localhost:8787/incident', {
+      method: 'POST',
+      headers: jsonHeaders(token),
+      body: JSON.stringify(payload),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error.message).toContain('does not match its declared hash');
   });
 
   it('issues upload credentials bound to the requesting user', async () => {

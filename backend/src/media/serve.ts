@@ -9,11 +9,11 @@ import { getUploadGrant, setUploadGrantHash } from '../repo/upload-grants.js';
 import { verifyMediaToken } from './token.js';
 import {
   assertSafeKey,
+  localPathForKey,
   store,
   type LocalObjectStore,
   type R2ObjectStore,
 } from './store.js';
-import { config } from '../config.js';
 
 export const mediaServeRoutes = new Hono();
 
@@ -69,12 +69,14 @@ const handleMediaUpload: Handler = async (c) => {
   const grant = await getUploadGrant(key);
   if (!grant) throw new ApiError(errorCodes.UNAUTHORIZED, 'unknown media key');
   const declared = (c.req.header('content-type') ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
-  if (declared && declared !== grant.content_type.toLowerCase()) {
+  if (!declared) {
+    throw new ApiError(errorCodes.VALIDATION, 'content-type header is required for upload');
+  }
+  if (declared !== grant.content_type.toLowerCase()) {
     throw new ApiError(errorCodes.VALIDATION, 'media content-type does not match the upload grant');
   }
 
-  const filePath = path.join(config.LOCAL_MEDIA_DIR, ...key.split('/'));
-  const digest = await streamBodyToFile(c, filePath);
+  const digest = await streamBodyToFile(c, localPathForKey(key));
   await setUploadGrantHash(key, digest);
   return new Response(null, { status: 200 });
 };

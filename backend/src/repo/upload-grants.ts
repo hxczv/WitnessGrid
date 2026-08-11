@@ -1,5 +1,6 @@
 import type { Db } from '../db.js';
 import { db } from '../db.js';
+import { config } from '../config.js';
 import { ApiError, errorCodes } from '../errors.js';
 import { rowQuery } from './shared.js';
 
@@ -53,6 +54,13 @@ export async function validateGrantsForIncident(
     const grant = byKey.get(item.key);
     if (!grant || grant.user_id !== userId) {
       throw new ApiError(errorCodes.VALIDATION, 'media was not uploaded by this account');
+    }
+    // In local mode the server saw the bytes and recorded their hash on the
+    // grant; a grant with no hash means the PUT was skipped, so the incident
+    // would reference a file that does not exist. In R2 mode the server never
+    // sees the bytes and the client-declared hash is trusted instead.
+    if (config.OBJECT_STORE === 'local' && grant.sha256 === null) {
+      throw new ApiError(errorCodes.VALIDATION, 'media was not uploaded (no file received)');
     }
     if (grant.sha256 !== null && grant.sha256 !== item.declaredHash) {
       throw new ApiError(errorCodes.VALIDATION, 'media content does not match its declared hash');

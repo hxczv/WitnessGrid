@@ -14,7 +14,7 @@ import { config } from '../config.js';
 import { ApiError, errorCodes } from '../errors.js';
 import { signMediaToken } from './token.js';
 
-export const EXT_CONTENT_TYPE: Record<string, string> = {
+const EXT_CONTENT_TYPE: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
@@ -39,7 +39,7 @@ export interface R2ObjectStore extends ObjectStore {
   presignedGetUrl(key: string): Promise<string>;
 }
 
-export function sanitizeFilename(filename: string): string {
+function sanitizeFilename(filename: string): string {
   const cleaned = filename
     .replace(/[^a-zA-Z0-9._-]+/g, '_')
     .replace(/\.{2,}/g, '.')
@@ -65,7 +65,9 @@ export function assertSafeKey(key: string): void {
   }
 }
 
-function localPathForKey(key: string): string {
+// Absolute filesystem path for a local-mode object key. Also used by the
+// upload handler so the served key and the stored file stay in sync.
+export function localPathForKey(key: string): string {
   assertSafeKey(key);
   return path.join(config.LOCAL_MEDIA_DIR, ...key.split('/'));
 }
@@ -158,7 +160,7 @@ class R2Store implements R2ObjectStore {
   }
 }
 
-export function createObjectStore(cfg: typeof config): ObjectStore {
+function createObjectStore(cfg: typeof config): ObjectStore {
   if (cfg.OBJECT_STORE === 'r2') return new R2Store();
   return new LocalStore();
 }

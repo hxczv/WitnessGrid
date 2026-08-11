@@ -10,11 +10,17 @@ import { rateLimitHit } from './repo/rate-limit-store.js';
 // hash of the target email depending on what is being limited.
 
 function clientIp(c: Context<AppEnv>): string {
-  const direct = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for')?.split(',')[0]?.trim();
-  return direct ?? 'unknown';
+  if (config.PLATFORM === 'workers') {
+    // Cloudflare overwrites cf-connecting-ip on every request, so it is safe
+    // to trust on Workers.
+    return c.req.header('cf-connecting-ip') ?? 'unknown';
+  }
+  // Plain Node: client-supplied forwarding headers are spoofable and there is
+  // no configured trust boundary, so every request shares one bucket.
+  return 'unknown';
 }
 
-export function emailHash(email: string): string {
+function emailHash(email: string): string {
   return createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
 }
 

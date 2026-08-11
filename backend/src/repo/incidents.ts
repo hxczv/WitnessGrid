@@ -19,6 +19,7 @@ import {
   rowQuery,
   withTx,
   type IncidentBaseRow,
+  type MediaRow,
 } from './shared.js';
 import { consumeGrants, validateGrantsForIncident } from './upload-grants.js';
 
@@ -77,7 +78,21 @@ function serializeIncident(
   };
 }
 
-export function parseCursor(cursor: string): { createdAtIso: string; id: string } {
+function incidentWithExtras(
+  row: IncidentBaseRow & { username: string | null },
+  mediaByIncident: Map<string, MediaRow[]>,
+  officersByIncident: Map<string, string[]>,
+): Incident {
+  const media = (mediaByIncident.get(row.id) ?? []).map((m) => ({
+    key: m.key,
+    type: m.type as MediaReference['type'],
+    hash: m.hash,
+    thumbnail_key: m.thumbnail_key,
+  }));
+  return serializeIncident(row, media, officersByIncident.get(row.id) ?? [], row.username);
+}
+
+function parseCursor(cursor: string): { createdAtIso: string; id: string } {
   try {
     const decoded = decodeCursor(cursor);
     const parsed = new Date(decoded.createdAtIso);
@@ -174,17 +189,28 @@ export async function getIncident(
   }
 
   const { mediaByIncident, officersByIncident } = await hydrateIncidentExtras([id]);
-  return serializeIncident(
-    row,
-    (mediaByIncident.get(id) ?? []).map((m) => ({
-      key: m.key,
-      type: m.type as MediaReference['type'],
-      hash: m.hash,
-      thumbnail_key: m.thumbnail_key,
-    })),
-    officersByIncident.get(id) ?? [],
-    row.username,
+  return incidentWithExtras(row, mediaByIncident, officersByIncident);
+}
+
+// Batch variant of getIncident for callers that need many rows at once
+// (e.g. saved-area alerts): one SELECT plus two extra queries instead of
+// N+1 round trips. Visibility follows the same rule as getIncident.
+export async function getIncidentsByIds(
+  ids: string[],
+  userId: string | null,
+): Promise<Map<string, Incident>> {
+  const found = new Map<string, Incident>();
+  if (ids.length === 0) return found;
+  const rows = await q.unsafe<Array<IncidentBaseRow & { username: string | null }>>(
+    `${INCIDENT_SELECT} WHERE i.id = ANY($1)`,
+    [ids],
   );
+  const visible = rows.filter((r) => r.moderation_status === 'approved' || r.user_id === userId);
+  const { mediaByIncident, officersByIncident } = await hydrateIncidentExtras(visible.map((r) => r.id));
+  for (const row of visible) {
+    found.set(row.id, incidentWithExtras(row, mediaByIncident, officersByIncident));
+  }
+  return found;
 }
 
 async function pageIncidents(
@@ -214,19 +240,7 @@ async function pageIncidents(
   const pageRows = rows.slice(0, limit);
   const { mediaByIncident, officersByIncident } = await hydrateIncidentExtras(pageRows.map((r) => r.id));
 
-  const items = pageRows.map((row) =>
-    serializeIncident(
-      row,
-      (mediaByIncident.get(row.id) ?? []).map((m) => ({
-        key: m.key,
-        type: m.type as MediaReference['type'],
-        hash: m.hash,
-        thumbnail_key: m.thumbnail_key,
-      })),
-      officersByIncident.get(row.id) ?? [],
-      row.username,
-    ),
-  );
+  const items = pageRows.map((row) => incidentWithExtras(row, mediaByIncident, officersByIncident));
 
   let nextCursor: string | null = null;
   if (rows.length > limit) {

@@ -2,7 +2,7 @@ import type { Incident, ListAlertsResult, SavedArea, SavedAreaCreate } from '@wi
 import { db } from '../db.js';
 import { ApiError, errorCodes } from '../errors.js';
 import { q } from './shared.js';
-import { getIncident } from './incidents.js';
+import { getIncidentsByIds } from './incidents.js';
 
 const AREA_LIMIT = 10;
 
@@ -90,9 +90,11 @@ export async function listAlerts(userId: string, limit = 100): Promise<ListAlert
     LIMIT ${limit}
   `;
 
+  const incidents = await getIncidentsByIds(rows.map((r) => r.incident_id), userId);
+
   const items: ListAlertsResult['items'] = [];
   for (const row of rows) {
-    const incident = await getIncident(row.incident_id, userId, { incrementView: false });
+    const incident = incidents.get(row.incident_id);
     if (!incident) continue;
     items.push({
       id: row.id,
