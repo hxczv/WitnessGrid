@@ -12,14 +12,9 @@ import { getSessionToken } from "@/lib/session";
 import { typeLabel } from "@/lib/time";
 import { useAuthStore } from "@/store/auth";
 import { StatusBanner } from "@/components/status-banner";
+import type { Pin } from "@/components/map/pin-map";
 
 type Step = "capture" | "pin" | "details" | "done";
-
-interface Pin {
-  lat: number;
-  lon: number;
-  accuracy: number | null;
-}
 
 // maplibre-gl is heavy, so the pin map only loads when the wizard reaches
 // the pin step instead of landing in the /report critical bundle.

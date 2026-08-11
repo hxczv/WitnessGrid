@@ -22,7 +22,7 @@ import { useAuthStore } from "@/store/auth";
 import { cssVar } from "@/lib/css-var";
 import { SavedAreaDialog } from "@/components/saved-area-dialog";
 import { StatusBanner } from "@/components/status-banner";
-import { baseMapStyle } from "@/lib/map-tiles";
+import { baseMapStyle, prefersDarkScheme } from "@/lib/map-tiles";
 
 const EMPTY_FC: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
@@ -139,12 +139,11 @@ export function MapView() {
     const container = containerRef.current;
     if (!container) return;
 
-    const prefersDark = window.matchMedia?.("(prefers-color-scheme: light)").matches !== true;
     const accent = cssVar("--accent", "#E8A33D");
     const bg = cssVar("--bg", "#12151C");
     const map = new maplibregl.Map({
       container,
-      style: baseMapStyle(prefersDark),
+      style: baseMapStyle(prefersDarkScheme()),
       center: [-2.8, 54.2],
       zoom: 5.5,
       attributionControl: { compact: true },

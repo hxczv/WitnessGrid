@@ -3,7 +3,8 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
-import { INCIDENT_TYPES, POLICE_FORCES } from "@/lib/contract";
+import { formatForce, INCIDENT_TYPES, POLICE_FORCES } from "@/lib/contract";
+import { typeLabel } from "@/lib/time";
 import type { FeedFilters } from "@/lib/feed-filters";
 
 export function FeedFiltersBar({ initialFilters }: { initialFilters: FeedFilters }) {
@@ -63,7 +64,7 @@ export function FeedFiltersBar({ initialFilters }: { initialFilters: FeedFilters
           <option value="">Any type</option>
           {INCIDENT_TYPES.map((t) => (
             <option key={t} value={t}>
-              {t.replaceAll("_", " ")}
+              {typeLabel(t)}
             </option>
           ))}
         </select>
@@ -74,7 +75,7 @@ export function FeedFiltersBar({ initialFilters }: { initialFilters: FeedFilters
           <option value="">Any force</option>
           {POLICE_FORCES.map((f) => (
             <option key={f} value={f}>
-              {f.replaceAll("_", " ")}
+              {formatForce(f)}
             </option>
           ))}
         </select>

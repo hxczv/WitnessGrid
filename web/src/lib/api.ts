@@ -14,16 +14,15 @@ import {
   type RatingSummary,
   type SavedArea,
   type Session,
-  type SessionUser,
   type StatsMe,
   type StatsPeriod,
   type StatsPublic,
 } from "@/lib/contract";
 
-export const DEFAULT_API_BASE_URL = "http://localhost:8787";
+const DEFAULT_API_BASE_URL = "http://localhost:8787";
 
 /** Base URL for client-side calls (bundled from NEXT_PUBLIC_*). */
-export function publicApiBaseUrl(): string {
+function publicApiBaseUrl(): string {
   return process.env.NEXT_PUBLIC_API_BASE_URL || DEFAULT_API_BASE_URL;
 }
 
@@ -224,10 +223,6 @@ export async function verifyMagicToken(token: string): Promise<Session> {
   return apiPost<Session>("/auth/verify", { token });
 }
 
-export async function fetchMe(token: string): Promise<SessionUser> {
-  return apiGet<SessionUser>("/auth/me", { token });
-}
-
 /** The signed-in user's own incidents (all moderation statuses). */
 export async function listMyIncidents(
   query: Partial<ListIncidentsQuery>,
@@ -245,14 +240,6 @@ export interface IncidentRating {
   appropriateness: number;
   professionalism: number;
   safety: number;
-}
-
-export async function getIncidentRatingSummary(
-  incidentId: string,
-  opts: ApiOptions = {},
-): Promise<RatingSummary> {
-  const data = await apiGet<unknown>(`/ratings/${encodeURIComponent(incidentId)}`, opts);
-  return parseOrThrow<RatingSummary>(RatingSummarySchema, data);
 }
 
 export async function rateIncident(

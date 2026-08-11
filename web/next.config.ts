@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
 import { serwistOptions } from "./serwist.config";
+import { tileOrigin as mapTileOrigin } from "./src/lib/map-tiles";
 
 const withSerwist = withSerwistInit(serwistOptions);
 
@@ -20,10 +21,10 @@ async function securityHeaders() {
     process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL,
     "http://localhost:8787",
   );
-  const tileOrigin = originOf(
-    process.env.NEXT_PUBLIC_MAP_TILES_URL,
-    "https://basemaps.cartocdn.com",
-  );
+  // Shares its placeholder normalization with the client-side map code so the
+  // CSP origin always matches the hostname tiles are actually fetched from
+  // (the {s} subdomain template included).
+  const tileOrigin = mapTileOrigin();
   const glyphOrigin = "https://protomaps.github.io";
 
   const csp = [

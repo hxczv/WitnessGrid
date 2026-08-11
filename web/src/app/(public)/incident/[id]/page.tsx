@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { ApiClientError, getIncident, serverApiBaseUrl, type IncidentDetail } from "@/lib/api";
 import { formatForce, type Incident } from "@/lib/contract";
-import { formatLocal, formatUTC, hash8, incidentTimecodeParts, typeLabel } from "@/lib/time";
+import { formatLocal, formatUTC, hash8, incidentHash, incidentTimecodeParts, typeLabel } from "@/lib/time";
 import { DeleteIncident } from "@/components/delete-incident";
 import { MediaGallery } from "@/components/media-gallery";
 import { RatingPanel } from "@/components/rating-panel";
@@ -134,7 +134,7 @@ export default async function IncidentPage({ params }: Props) {
             v={incident.collar_numbers && incident.collar_numbers.length > 0 ? incident.collar_numbers.join(", ") : "—"}
           />
           <Fact k="Coordinates" v={tc.coordinate} />
-          <Fact k="Media hash" v={hash8(incident.media[0]?.hash ?? incident.id)} />
+          <Fact k="Media hash" v={hash8(incidentHash(incident))} />
         </dl>
       </section>
 

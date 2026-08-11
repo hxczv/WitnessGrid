@@ -3,7 +3,7 @@
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
-import { baseMapStyle } from "@/lib/map-tiles";
+import { baseMapStyle, prefersDarkScheme } from "@/lib/map-tiles";
 import { cssVar } from "@/lib/css-var";
 import { pinSvgDataUri } from "@/components/map/pin";
 
@@ -24,10 +24,9 @@ export function PinMap({ pin, onPin }: { pin: Pin | null; onPin: (p: Pin) => voi
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const prefersDark = window.matchMedia?.("(prefers-color-scheme: light)").matches !== true;
     const map = new maplibregl.Map({
       container,
-      style: baseMapStyle(prefersDark),
+      style: baseMapStyle(prefersDarkScheme()),
       center: [pinRef.current?.lon ?? -1.5, pinRef.current?.lat ?? 52.7],
       zoom: pinRef.current ? 14 : 5.5,
       attributionControl: { compact: true },

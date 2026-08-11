@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { getStatsPublic, serverApiBaseUrl } from "@/lib/api";
-import type { StatsPeriod } from "@/lib/contract";
-import { formatForce } from "@/lib/contract";
+import { formatForce, type StatsPeriod } from "@/lib/contract";
 import { typeLabel } from "@/lib/time";
 import { BarChart, LineChart } from "@/components/charts";
 import { PeriodSwitch } from "@/components/period-switch";
@@ -23,7 +22,7 @@ export default async function StatsPage({
   const sp = await searchParams;
   const raw = typeof sp.period === "string" ? sp.period : "30d";
   const period: StatsPeriod = raw === "90d" || raw === "all" ? raw : "30d";
-  const periodLabel = period === "90d" ? "90" : period === "all" ? "all time" : "30";
+  const periodLabel = period === "90d" ? "Last 90 days" : period === "all" ? "All time" : "Last 30 days";
   let stats: Awaited<ReturnType<typeof getStatsPublic>> | null = null;
   let error: string | null = null;
   try {
@@ -67,11 +66,17 @@ export default async function StatsPage({
             ) : null}
           </section>
           <section className="rounded-md border hairline bg-surface/60 p-5">
-            <h2 className="label">Last {periodLabel} days</h2>
-            <LineChart
-              label={`Incidents recorded per day, last ${periodLabel} days`}
-              data={stats.series_30d.map((d) => ({ label: d.day, value: d.count }))}
-            />
+            <h2 className="label">{periodLabel}</h2>
+            {period === "30d" ? (
+              <LineChart
+                label="Incidents recorded per day, last 30 days"
+                data={stats.series_30d.map((d) => ({ label: d.day, value: d.count }))}
+              />
+            ) : (
+              <p className="timecode text-muted">
+                The daily series covers the last 30 days — switch back to the 30d period to see it.
+              </p>
+            )}
           </section>
           <section className="rounded-md border hairline bg-surface/60 p-5">
             <h2 className="label">By incident type</h2>

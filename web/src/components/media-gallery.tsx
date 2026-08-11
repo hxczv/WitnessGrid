@@ -1,6 +1,5 @@
-"use client";
-
 import { mediaUrl } from "@/lib/api";
+import { isVideoType } from "@/lib/media";
 import type { Incident } from "@/lib/contract";
 
 export function MediaGallery({ incident }: { incident: Incident }) {
@@ -11,7 +10,7 @@ export function MediaGallery({ incident }: { incident: Incident }) {
     <ul className="grid gap-3">
       {incident.media.map((m) => (
         <li key={m.key} className="overflow-hidden rounded-md border hairline bg-black/40">
-          {m.type.startsWith("video/") ? (
+          {isVideoType(m.type) ? (
             <video
               controls
               preload="none"

@@ -4,11 +4,12 @@ import type { Incident } from "@/lib/contract";
 import { mediaUrl } from "@/lib/api";
 import { formatForce } from "@/lib/contract";
 import { incidentTimecodeParts, typeLabel } from "@/lib/time";
+import { isImageType } from "@/lib/media";
 import { Tartan } from "@/components/tartan";
 
 function Thumbnail({ incident }: { incident: Incident }) {
   const media = incident.media[0];
-  const thumbKey = media?.thumbnail_key ?? (media && media.type.startsWith("image/") ? media.key : null);
+  const thumbKey = media?.thumbnail_key ?? (media && isImageType(media.type) ? media.key : null);
   if (!thumbKey) {
     return (
       <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-sm border hairline bg-surface sm:w-36">

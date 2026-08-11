@@ -14,6 +14,10 @@ export function isVideoType(type: string): boolean {
   return type.startsWith("video/");
 }
 
+export function isImageType(type: string): boolean {
+  return type.startsWith("image/");
+}
+
 /** Map a contract media type to its file extension. */
 export function extFor(type: MediaType): string {
   switch (type) {

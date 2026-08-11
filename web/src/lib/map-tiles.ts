@@ -9,12 +9,32 @@ export const TILE_URL =
 
 const LIGHT_TILE_URL = "https://basemaps.cartocdn.com/{s}/light_all/{z}/{x}/{y}.png";
 
+// {s} and zoom/x/y placeholders must be substituted before the URL can be
+// parsed, otherwise "{s}.basemaps.cartocdn.com" is treated as a literal
+// hostname and matches nothing in a CSP allowlist.
+function normalizedTileUrl(): string {
+  return TILE_URL.replace("{s}", "a").replace("{z}", "0").replace("{x}", "0").replace("{y}", "0");
+}
+
 export function tileHostname(): string {
   try {
-    return new URL(TILE_URL.replace("{s}", "a").replace("{z}", "0").replace("{x}", "0").replace("{y}", "0")).hostname;
+    return new URL(normalizedTileUrl()).hostname;
   } catch {
     return "basemaps.cartocdn.com";
   }
+}
+
+export function tileOrigin(): string {
+  try {
+    return new URL(normalizedTileUrl()).origin;
+  } catch {
+    return "https://basemaps.cartocdn.com";
+  }
+}
+
+/** Dark by default, matching the site chrome; respects a light-system preference. */
+export function prefersDarkScheme(): boolean {
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches !== true;
 }
 
 export function baseMapStyle(prefersDark = true): StyleSpecification {

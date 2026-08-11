@@ -62,7 +62,7 @@ export function formatCoordinate(lat: number | undefined, lon: number | undefine
   return `${lat.toFixed(2)},${lon.toFixed(2)}`;
 }
 
-export interface TimecodeParts {
+interface TimecodeParts {
   time: string;
   force: string;
   coordinate: string;
@@ -82,6 +82,11 @@ export function incidentTimecodeParts(incident: Incident): TimecodeParts {
 function firstHash(incident: Incident): string {
   const h = incident.media[0]?.hash;
   return h && /^[a-f0-9]{64}$/.test(h) ? h : incident.id;
+}
+
+/** The media hash of an incident, falling back to its id when malformed. */
+export function incidentHash(incident: Incident): string {
+  return firstHash(incident);
 }
 
 export function typeLabel(type: IncidentType): string {
