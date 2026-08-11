@@ -4,6 +4,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef } from "react";
 import { baseMapStyle, prefersDarkScheme } from "@/lib/map-tiles";
+import { addUkIeMaskLayer } from "@/lib/uk-ie-mask";
 import { cssVar } from "@/lib/css-var";
 import { UK_IE_BOUNDS } from "@/lib/contract";
 import { pinSvgDataUri } from "@/components/map/pin";
@@ -63,6 +64,7 @@ export function PinMap({ pin, onPin }: { pin: Pin | null; onPin: (p: Pin) => voi
     };
 
     map.on("load", () => {
+      addUkIeMaskLayer(map, prefersDarkScheme());
       if (pinRef.current) placePin(pinRef.current.lon, pinRef.current.lat);
     });
     map.on("click", (e) => {

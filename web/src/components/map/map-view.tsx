@@ -24,6 +24,7 @@ import { cssVar } from "@/lib/css-var";
 import { SavedAreaDialog } from "@/components/saved-area-dialog";
 import { StatusBanner } from "@/components/status-banner";
 import { baseMapStyle, prefersDarkScheme } from "@/lib/map-tiles";
+import { addUkIeMaskLayer } from "@/lib/uk-ie-mask";
 
 const EMPTY_FC: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
@@ -165,6 +166,10 @@ export function MapView() {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
     map.on("load", () => {
+      // Paint every pixel outside the British Isles in the basemap water
+      // color — the maxBounds box alone still shows northern France and the
+      // Netherlands, which sit inside the box's latitude band.
+      addUkIeMaskLayer(map, prefersDarkScheme());
       // maxBounds alone keeps the UK/Ireland box covering the viewport —
       // maplibre blocks zoom-out past the zoom where the box fills the
       // screen, so other countries never come into view.

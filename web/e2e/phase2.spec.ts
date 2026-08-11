@@ -30,6 +30,53 @@ test("the map page renders a full-height map canvas", async ({ page }) => {
   expect(zoom ?? 0).toBeGreaterThan(5.4);
 });
 
+// Regression: the maxBounds box spans lat 49–61, which cuts straight through
+// northern France, so foreign land (Dunkirk, Calais, Le Havre) sits inside
+// the locked camera. A fill layer painted in the basemap water color must
+// cover every pixel outside the British Isles.
+test("the map masks out all foreign land", async ({ page }) => {
+  await page.goto("/map");
+  await expect(page.getByTestId("map").locator("canvas")).toBeVisible({ timeout: 30_000 });
+  const result = await page.evaluate(async () => {
+    type ProbeMap = {
+      loaded(): boolean;
+      once(event: string, cb: () => void): unknown;
+      getStyle(): { layers: { id: string }[] };
+      project(pos: [number, number]): { x: number; y: number };
+      queryRenderedFeatures(
+        point: { x: number; y: number },
+        opts: { layers: string[] },
+      ): unknown[];
+    };
+    const map = (globalThis as { __wgMap?: ProbeMap }).__wgMap;
+    if (!map) return { ok: false as const };
+    if (!map.loaded()) await new Promise<void>((r) => void map.once("load", r));
+    await new Promise<void>((r) => void map.once("idle", r));
+    const layerIds = map.getStyle().layers.map((l) => l.id);
+    const maskAfterBasemap = layerIds.indexOf("uk-ie-mask") > layerIds.indexOf("basemap");
+    const covered = (lon: number, lat: number) =>
+      map.queryRenderedFeatures(map.project([lon, lat]), { layers: ["uk-ie-mask"] }).length > 0;
+    return {
+      ok: true as const,
+      maskAfterBasemap,
+      dunkirkCovered: covered(2.377, 51.05),
+      calaisCovered: covered(1.855, 50.947),
+      leHavreCovered: covered(0.11, 49.49),
+      londonVisible: !covered(-0.1276, 51.5072),
+      dublinVisible: !covered(-6.2603, 53.3498),
+      manchesterVisible: !covered(-2.2426, 53.4808),
+    };
+  });
+  expect(result.ok).toBe(true);
+  expect(result.maskAfterBasemap).toBe(true);
+  expect(result.dunkirkCovered).toBe(true);
+  expect(result.calaisCovered).toBe(true);
+  expect(result.leHavreCovered).toBe(true);
+  expect(result.londonVisible).toBe(true);
+  expect(result.dublinVisible).toBe(true);
+  expect(result.manchesterVisible).toBe(true);
+});
+
 test("search filters the register and the URL reflects the query", async ({ page }) => {
   await page.goto("/");
   const search = page.getByTestId("feed-search");
