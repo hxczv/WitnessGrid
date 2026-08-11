@@ -1,74 +1,70 @@
 # WitnessGrid
 
-An independent, community-built register of police incidents across the United Kingdom. WitnessGrid makes interactions between the public and police visible and searchable: timestamped, geolocated, media-backed records submitted by witnesses and verified against a moderation queue.
+An independent, community-built register of police incidents across the United Kingdom. WitnessGrid gives the public a way to record their own accounts of encounters with police — timestamped, geolocated, with evidence attached — and to search what other people have witnessed.
 
-## Architecture
+## What WitnessGrid is
 
-- **Monorepo (pnpm workspaces)** — a single shared contract package, one API service, one web app, and a plain-SQL database layer shared between local and hosted PostgreSQL.
-- **`packages/contract`** — the single source of truth: zod schemas, enums, and API types consumed by both the backend and the web app. No duplicated type definitions anywhere.
-- **`backend`** — Hono API service. Runs on Node locally (`@hono/node-server`) and on Cloudflare Workers in production. First-party auth (email magic links + JWTs), Postgres-backed rate limiting, object-store adapter (local filesystem in dev, R2 in prod), email adapter (console in dev, Resend in prod).
-- **`web`** — Next.js 15 App Router PWA (Serwist) with a MapLibre GL JS map (raster CARTO basemap tiles), offline capture queue (IndexedDB, SHA-256 via WebCrypto, no Background Sync dependency), SSR register feed and incident pages.
-- **`infra`** — database migrations and seed data in pure SQL (PostgreSQL + PostGIS), runnable through a small Node runner, plus env templates for the services.
-- **Data layer** — PostgreSQL + PostGIS. Locations are stored as `geography(Point,4326)` for real geospatial querying (bbox filtering, future clustering). Migrations are plain SQL so the exact same schema runs locally and on hosted Postgres.
-- **Moderation & privacy** — public reads expose only `moderation_status='approved'` incidents; submissions are auto-approved in Phase 1; reporting flags feed a moderation queue.
+Most of what we know about policing comes from official accounts or the news. WitnessGrid is the other side: a public register built from the accounts of people who were there. Anyone can read it, and anyone can add a record of their own — no account details required beyond an email address for sign-in, and witnesses stay pseudonymous.
 
-## Monorepo layout
+A record carries a time, a place, a description, and optionally photos or video. The register is searchable by type, force, location, and keyword, and it's shown on a map so patterns become visible. The web app works as an installable app, and you can draft a report even with no connection — it syncs when you're back online.
 
-```
-packages/contract/   shared zod schemas, enums, API types (source of truth)
-backend/             Hono API service (Node dev / Cloudflare Workers prod)
-web/                 Next.js PWA (register, map, report, profile)
-infra/
-  db/migrations/     SQL migrations, applied in sorted order by the runner
-  db/seed.sql        development seed data (UK incidents + dev users)
-  db/migrate.ts      migration runner (tracks applied files in schema_migrations)
-  db/seed.ts         seed runner
-backend/.env.example  backend environment template (copy to backend/.env)
-web/.env.example      web environment template (copy to web/.env.local)
-.github/workflows/   CI (install, typecheck, test; deploy gated until credentials exist)
-```
+Two things we say plainly:
 
-## Getting started
+- **Reports are the witnesses' own recordings; they have not been verified by anyone.** The moderation queue exists so problematic content can be flagged, not to vouch for what's true.
+- **Only record if it is safe to do so.**
 
-Prerequisites: **Node 24**, **pnpm 9.12.0**, and **PostgreSQL with PostGIS enabled** (installed locally or reachable over TCP). Current development host runs Postgres 18 + PostGIS with a local `witnessgrid` database.
+## What's in the repo
+
+| Directory | What it is |
+|---|---|
+| `web/` | The app people use — the register feed, an interactive map, the guided report flow with offline capture, and profile pages. |
+| `backend/` | The API — magic-link sign-in, media uploads, rate limiting, and everything the app talks to. |
+| `packages/contract/` | The shared definitions of the API. Both the web app and the backend use them, so the two sides can't silently disagree. |
+| `infra/` | The database — plain-SQL migrations and development seed data for PostgreSQL + PostGIS. |
+
+The whole stack runs on PostgreSQL with PostGIS for location data, so the exact same database schema works locally and in production.
+
+## Run it locally
+
+You'll need **Node 24**, **pnpm 9.12**, and a **PostgreSQL database with PostGIS** (installed locally, or reachable over TCP).
 
 ```sh
-# 1. Install workspace dependencies (infra is a workspace member)
+# 1. Install dependencies
 pnpm install
 
-# 2. Create the database (or point DATABASE_URL at your PostGIS-enabled database)
-#    e.g. createdb witnessgrid, or via your preferred tooling.
-
-# 3. Copy the environment templates (both are commented):
+# 2. Copy the environment templates (both files are commented):
 #    backend/.env.example -> backend/.env
 #    web/.env.example     -> web/.env.local
-#    Generate a JWT secret with:
-#    node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+#    Then generate a JWT secret and put it in backend/.env:
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
-# 4. Apply migrations, then seed development data
-cd infra
-pnpm migrate       # applies infra/db/migrations/*.sql in order
-pnpm seed          # inserts dev users + 8 approved UK incidents (idempotent)
-cd ..
+# 3. Point DATABASE_URL at your database, then apply migrations
+#    and seed some example UK incidents:
+pnpm migrate
+pnpm seed
 
-# 5. Run checks
-pnpm -r typecheck
-pnpm -r test
+# 4. Run it — the API on :8787, the web app on :3000
+pnpm dev
+
+# 5. Verify your changes
+pnpm typecheck
+pnpm test
 ```
 
-`pnpm migrate:dry` prints the migration plan without connecting to a database. If the database is unreachable, `migrate`/`seed` fail loudly with instructions — they never silently pretend to succeed.
+`pnpm migrate:dry` prints what the migrations would do without touching a database. If the database is unreachable, `migrate` and `seed` fail loudly with instructions rather than pretending to succeed.
 
-## Current status
+## Where things stand
 
-Fully functional locally: web app + API + PostGIS database + seed data, with the backend integration suite running against live Postgres. Pending live deployment (credentials-gated CI), the moderation queue UI, and map clustering.
+The app is fully functional locally: web app, API, database, seed data, and the backend's integration suite all run against the real stack. Deployment is the one thing left to do — CI is ready and gated until hosting credentials exist.
 
-## Roadmap
+Live today: the register (report, browse, search, map), sign-in with magic links, ratings, statistics, and saved areas with email alerts.
 
-- **Phase 1 (complete):** core schema + migrations + seed, Hono API with auth/upload/incident endpoints, Next.js PWA with offline capture queue and map.
-- **Phase 1.1 (implemented):** ratings, statistics pages, saved-area alerts.
-- **Phase 1.1 (remaining):** moderation queue UI, clustering on the map.
-- **Phase 2:** supporter subscriptions, comment threads, deeper geospatial analysis (cluster/trend views).
+Next up: the moderation queue UI, map clustering, then supporter subscriptions, comment threads, and deeper analysis of what's been recorded.
+
+## Contributing
+
+We're glad to have you. Please read [CONTRIBUTING](CONTRIBUTING.md) and [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md) first.
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Reporting policy, terms and privacy documents live with the web app.
+MIT — see [LICENSE](LICENSE).
