@@ -6,13 +6,23 @@ import postgres from 'postgres';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DATABASE_URL = 'postgres://postgres:postgres@localhost:5432/witnessgrid';
 
-// 1x1 placeholder image written to each seeded media key so the local object
-// store can serve dev media without a real upload. Same content everywhere;
-// the sha256 column is only a de-dup key, not a content check.
-const PLACEHOLDER_IMAGE = Buffer.from(
+// 1x1 placeholder images written to each seeded media key so the local object
+// store can serve dev media without a real upload. Bytes are matched to the
+// key's extension so the served content-type decodes (the store derives the
+// content-type from the key; browsers honour the nosniff header). The sha256
+// column is only a de-dup key, not a content check.
+const PLACEHOLDER_JPEG = Buffer.from(
+  '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AVN//2Q==',
+  'base64',
+);
+const PLACEHOLDER_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
   'base64',
 );
+
+function placeholderForKey(key: string): Buffer {
+  return /\.png$/i.test(key) ? PLACEHOLDER_PNG : PLACEHOLDER_JPEG;
+}
 
 async function main(): Promise<void> {
   const url = process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL;
@@ -49,7 +59,7 @@ async function main(): Promise<void> {
         if (!key) continue;
         const filePath = path.join(mediaDir, ...key.split('/'));
         await mkdir(path.dirname(filePath), { recursive: true });
-        await writeFile(filePath, PLACEHOLDER_IMAGE);
+        await writeFile(filePath, placeholderForKey(key));
       }
     }
     console.log(`Materialised ${mediaRows.length} seed media objects under ${mediaDir}.`);

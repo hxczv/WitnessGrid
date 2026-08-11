@@ -5,15 +5,14 @@ import type { StyleSpecification } from "maplibre-gl";
 // raster template (vector/PMTiles archives are not supported by this style).
 export const TILE_URL =
   process.env.NEXT_PUBLIC_MAP_TILES_URL ||
-  "https://basemaps.cartocdn.com/{s}/dark_all/{z}/{x}/{y}.png";
+  "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
 
-const LIGHT_TILE_URL = "https://basemaps.cartocdn.com/{s}/light_all/{z}/{x}/{y}.png";
+const LIGHT_TILE_URL = "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
 
-// {s} and zoom/x/y placeholders must be substituted before the URL can be
-// parsed, otherwise "{s}.basemaps.cartocdn.com" is treated as a literal
-// hostname and matches nothing in a CSP allowlist.
+// zoom/x/y placeholders must be substituted before the URL can be parsed,
+// otherwise the template is treated as a literal path.
 function normalizedTileUrl(): string {
-  return TILE_URL.replace("{s}", "a").replace("{z}", "0").replace("{x}", "0").replace("{y}", "0");
+  return TILE_URL.replace("{z}", "0").replace("{x}", "0").replace("{y}", "0");
 }
 
 export function tileHostname(): string {

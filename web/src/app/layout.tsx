@@ -71,7 +71,10 @@ export default function RootLayout({
       className={`${archivo.variable} ${atkinson.variable} ${plex.variable}`}
     >
       <body>
-        <SerwistProvider swUrl="/serwist/sw.js">
+        <SerwistProvider
+          swUrl="/serwist/sw.js"
+          disable={process.env.NODE_ENV === "development"}
+        >
           <Providers>
             <PwaLifecycle />
             <Nav />

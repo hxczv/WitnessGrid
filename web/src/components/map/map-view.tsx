@@ -181,7 +181,7 @@ export function MapView() {
         layout: {
           "text-field": ["get", "point_count_abbreviated"],
           "text-size": 11,
-          "text-font": ["Noto Sans Bold"],
+          "text-font": ["Noto Sans Medium"],
         },
         paint: { "text-color": bg },
       });

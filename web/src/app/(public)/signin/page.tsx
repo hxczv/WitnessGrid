@@ -2,7 +2,7 @@
 
 import { KeyRound, Mail } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { requestMagicLink, verifyMagicToken } from "@/lib/api";
 import { safeNext } from "@/lib/redirect";
 import { saveSession } from "@/lib/session";
@@ -20,10 +20,14 @@ function SignInForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Magic-link deep link (?token=… or ?t=…) auto-verifies on arrival.
+  // Magic-link deep link (?token=… or ?t=…) auto-verifies on arrival. The
+  // token is single-use, so the effect must run exactly once even under
+  // StrictMode's dev-only double-invoke.
+  const tokenHandled = useRef(false);
   useEffect(() => {
     const token = params.get("token") ?? params.get("t");
-    if (!token) return;
+    if (!token || tokenHandled.current) return;
+    tokenHandled.current = true;
     setBusy(true);
     setError(null);
     void verifyMagicToken(token)
