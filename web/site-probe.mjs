@@ -26,6 +26,10 @@ async function probe(name, path, opts = {}) {
     errors.push(`NAV: ${e.message.split("\n")[0]}`);
   }
   await page.waitForTimeout(1500);
+  if (path === "/map") {
+    const mapH = await page.evaluate(() => document.querySelector('[data-testid="map"]')?.clientHeight ?? -1);
+    if (mapH < 200) errors.push(`LAYOUT: map container is ${mapH}px tall (collapsed map)`);
+  }
   const shot = `${OUT}/${name}.png`;
   await page.screenshot({ path: shot, fullPage: true });
   results.push({ name, path, errors: [...new Set(errors)], failed: [...new Set(failed)], badStatus: [...new Set(badStatus)], shot });

@@ -4,6 +4,19 @@ import { signIn } from "./helpers";
 
 const SEED_INCIDENT = "/incident/00000000-0000-4000-8000-000000001005";
 
+// Regression: maplibre adds its own .maplibregl-map class to the container,
+// which previously overrode the absolute positioning and collapsed the map
+// to zero height. The container must stay full-size once the map initialises.
+test("the map page renders a full-height map canvas", async ({ page }) => {
+  await page.goto("/map");
+  const container = page.getByTestId("map");
+  const canvas = container.locator("canvas");
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  await expect
+    .poll(() => container.evaluate((el) => el.clientHeight), { timeout: 30_000 })
+    .toBeGreaterThan(200);
+});
+
 test("search filters the register and the URL reflects the query", async ({ page }) => {
   await page.goto("/");
   const search = page.getByTestId("feed-search");

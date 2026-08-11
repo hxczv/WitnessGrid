@@ -325,7 +325,12 @@ export function MapView() {
 
   return (
     <div className="relative h-full w-full">
-      <div ref={containerRef} className="absolute inset-0" data-testid="map" />
+      {/* Inline styles required: maplibre adds .maplibregl-map (position:relative) to this node, which otherwise beats Tailwind's layered `absolute` and collapses the map to zero height. */}
+      <div
+        ref={containerRef}
+        style={{ position: "absolute", inset: 0 }}
+        data-testid="map"
+      />
 
       {/* Filter panel + error banner, stacked in one column */}
       <div className="absolute left-3 top-3 z-10 flex w-[min(20rem,calc(100vw-1.5rem))] flex-col gap-2">
