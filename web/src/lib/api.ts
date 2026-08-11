@@ -82,6 +82,11 @@ function toApiClientError(status: number, payload: unknown): ApiClientError {
   return new ApiClientError(status, "unknown_error", `API request failed (status ${status})`);
 }
 
+const RETRYABLE_METHODS = new Set(["GET", "DELETE"]);
+const RETRY_DELAYS_MS = [300, 900];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function requestJson<T>(
   path: string,
   init: RequestInit,
@@ -91,23 +96,33 @@ async function requestJson<T>(
   headers.set("Accept", "application/json");
   if (opts.token) headers.set("Authorization", `Bearer ${opts.token}`);
 
-  let res: Response;
-  try {
-    res = await fetch(`${resolveBase(opts)}${path}`, { ...init, headers });
-  } catch (cause) {
-    throw new ApiClientError(
-      0,
-      "network_error",
-      `Cannot reach the API (${cause instanceof Error ? cause.message : String(cause)})`,
-    );
-  }
+  const method = (init.method ?? "GET").toUpperCase();
+  const retryDelays = RETRYABLE_METHODS.has(method) ? RETRY_DELAYS_MS : [];
 
-  if (!res.ok) {
-    const payload = await res.json().catch(() => null);
-    throw toApiClientError(res.status, payload);
+  for (let attempt = 0; ; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(`${resolveBase(opts)}${path}`, { ...init, headers });
+    } catch (cause) {
+      const delay = retryDelays[attempt];
+      if (delay !== undefined) {
+        await sleep(delay);
+        continue;
+      }
+      throw new ApiClientError(
+        0,
+        "network_error",
+        `Cannot reach the API (${cause instanceof Error ? cause.message : String(cause)})`,
+      );
+    }
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      throw toApiClientError(res.status, payload);
+    }
+    if (res.status === 204) return undefined as T;
+    return (await res.json()) as T;
   }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
 }
 
 export function apiGet<T>(path: string, opts: ApiOptions = {}): Promise<T> {

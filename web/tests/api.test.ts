@@ -8,10 +8,12 @@ import {
   isApiError,
   listIncidents,
   rateIncident,
+  requestMagicLink,
 } from "@/lib/api";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe("buildQuery", () => {
@@ -77,9 +79,60 @@ describe("listIncidents", () => {
     });
   });
 
-  it("surfaces network failures as status-0 errors", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("ECONNREFUSED"))));
-    await expect(listIncidents({})).rejects.toMatchObject({ status: 0, code: "network_error" });
+  it("gives up after retries when the network stays down", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async () => Promise.reject(new Error("ECONNREFUSED")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = listIncidents({});
+    const rejection = expect(promise).rejects.toMatchObject({ status: 0, code: "network_error" });
+    await vi.advanceTimersByTimeAsync(10_000);
+    await rejection;
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("recovers from a transient network failure on GET", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("ECONNREFUSED"))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ items: [], next_cursor: null }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = listIncidents({});
+    await vi.advanceTimersByTimeAsync(10_000);
+    await expect(promise).resolves.toEqual({ items: [], next_cursor: null });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry non-idempotent methods", async () => {
+    const fetchMock = vi.fn(async () => Promise.reject(new Error("ECONNREFUSED")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(requestMagicLink("witness@example.com")).rejects.toMatchObject({
+      status: 0,
+      code: "network_error",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry HTTP error responses", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: false,
+      status: 429,
+      json: async () => ({ error: { code: "rate_limited", message: "slow down" } }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listIncidents({})).rejects.toMatchObject({
+      status: 429,
+      code: "rate_limited",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 
