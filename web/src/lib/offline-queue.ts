@@ -80,11 +80,13 @@ export interface FlushResult {
   submitted: string[];
   /** client_ids dropped because the server already holds them (CONFLICT). */
   dropped: string[];
+  /** client_ids dropped because the server permanently rejected them (4xx). */
+  failed: string[];
   /** client_ids kept for retry (network/storage/auth issues). */
   retried: string[];
 }
 
-type Outcome = "submitted" | "dropped" | "retried";
+type Outcome = "submitted" | "dropped" | "failed" | "retried";
 
 async function flushOne(
   item: QueuedSubmission,
@@ -113,7 +115,10 @@ async function flushOne(
     await api.createIncident({ ...item.incident, media: refs, client_id: item.client_id }, token);
     return "submitted";
   } catch (err) {
-    if (isApiError(err) && err.code === "conflict") return "dropped";
+    if (isApiError(err)) {
+      if (err.code === "conflict") return "dropped";
+      if (!err.retryable) return "failed";
+    }
     return "retried";
   }
 }
@@ -129,7 +134,7 @@ export async function flushQueue(
   token: string | null = null,
 ): Promise<FlushResult> {
   const items = await queue.getAll();
-  const result: FlushResult = { submitted: [], dropped: [], retried: [] };
+  const result: FlushResult = { submitted: [], dropped: [], failed: [], retried: [] };
   for (const item of items) {
     const outcome = await flushOne(item, api, token);
     if (outcome === "submitted") {
@@ -137,6 +142,9 @@ export async function flushQueue(
       await queue.remove(item.client_id);
     } else if (outcome === "dropped") {
       result.dropped.push(item.client_id);
+      await queue.remove(item.client_id);
+    } else if (outcome === "failed") {
+      result.failed.push(item.client_id);
       await queue.remove(item.client_id);
     } else {
       result.retried.push(item.client_id);

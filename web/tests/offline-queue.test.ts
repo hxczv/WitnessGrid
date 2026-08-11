@@ -119,4 +119,35 @@ describe("flushQueue", () => {
     expect(result.retried).toEqual([clientId]);
     expect(await queue.count()).toBe(1);
   });
+
+  it("drops rows the server rejects permanently (validation/too large)", async () => {
+    const queue = fakeQueue();
+    const clientId = "66666666-6666-4666-8666-666666666666";
+    await queue.enqueue(sampleSubmission(clientId));
+    const api = fakeApi({
+      createIncident: vi.fn(async () =>
+        Promise.reject(new ApiClientError(400, "validation_error", "invalid payload")),
+      ),
+    });
+
+    const result = await flushQueue(queue, api, "token");
+
+    expect(result.failed).toEqual([clientId]);
+    expect(result.retried).toHaveLength(0);
+    expect(await queue.count()).toBe(0);
+  });
+
+  it("keeps rows rate-limited by the server for retry", async () => {
+    const queue = fakeQueue();
+    const clientId = "77777777-7777-4777-8777-777777777777";
+    await queue.enqueue(sampleSubmission(clientId));
+    const api = fakeApi({
+      upload: vi.fn(async () => Promise.reject(new ApiClientError(429, "rate_limited", "slow down"))),
+    });
+
+    const result = await flushQueue(queue, api, "token");
+
+    expect(result.retried).toEqual([clientId]);
+    expect(await queue.count()).toBe(1);
+  });
 });

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import { getIncident, rateIncident } from "@/lib/api";
+import { getRatingSummary, rateIncident } from "@/lib/api";
 import type { RatingSummary } from "@/lib/contract";
 import { buildScores } from "@/lib/ratings";
 import { useAuthStore } from "@/store/auth";
@@ -112,18 +112,18 @@ export function RatingPanel({
 
   const isOwner = user !== null && user.id === ownerUserId;
 
-  const { data: incident } = useQuery({
-    queryKey: ["incident", incidentId, token ?? null],
-    queryFn: () => getIncident(incidentId, { token: token ?? undefined }),
+  const { data: summaryData } = useQuery({
+    queryKey: ["rating-summary", incidentId, token ?? null],
+    queryFn: () => getRatingSummary(incidentId, { token: token ?? undefined }),
     enabled: Boolean(token),
   });
 
-  const summary: RatingSummary | null = incident?.rating_summary ?? serverSummary;
+  const summary: RatingSummary | null = summaryData ?? serverSummary;
 
   const rate = useMutation({
     mutationFn: (scores: { appropriateness: number; professionalism: number; safety: number }) =>
       rateIncident(incidentId, scores, { token: token ?? undefined }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["incident", incidentId] }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["rating-summary", incidentId] }),
   });
 
   if (isOwner) return null;

@@ -22,7 +22,10 @@ listRoutes.get('/incidents/mine', requireAuth, async (c) => {
 
 listRoutes.get('/incident/:id', optionalAuth, async (c) => {
   const id = assertUuid(c.req.param('id'));
-  const incident = await getIncident(id, c.get('userId') ?? null);
+  // ?incrementView=0 lets image-preview fetchers (e.g. the OG route) read a
+  // record without counting a human view.
+  const incrementView = c.req.query('incrementView') !== '0';
+  const incident = await getIncident(id, c.get('userId') ?? null, { incrementView });
   if (!incident) throw new ApiError(errorCodes.NOT_FOUND, 'incident not found');
   const summary = await getRatingSummary(id, c.get('userId') ?? null);
   const body = summary.count > 0 ? { ...incident, rating_summary: summary } : incident;

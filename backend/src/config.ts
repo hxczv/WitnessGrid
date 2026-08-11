@@ -64,7 +64,14 @@ const envSource: Record<string, string | undefined> =
 export const config: Config = loadConfig(envSource);
 
 // Misconfiguration that is technically valid but almost certainly accidental.
-if (config.RESEND_API_KEY === undefined && config.PLATFORM === 'workers') {
+// On the deployed worker a missing key silently breaks sign-in links and
+// area alerts, so refuse to boot rather than degrade without warning.
+if (config.PLATFORM === 'workers' && config.RESEND_API_KEY === undefined) {
+  throw new Error(
+    'Invalid environment configuration: PLATFORM=workers requires RESEND_API_KEY (sign-in links and area alerts are emailed)',
+  );
+}
+if (config.RESEND_API_KEY === undefined) {
   console.warn(
     '[witnessgrid] RESEND_API_KEY is not set — sign-in links and area alerts will only be logged, not emailed.',
   );

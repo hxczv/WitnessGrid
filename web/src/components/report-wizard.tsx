@@ -225,7 +225,12 @@ export function ReportWizard() {
     setBusy(true);
     setError(null);
     const clientId = crypto.randomUUID();
-    const parsedCount = officerCount.trim() ? Math.max(0, Math.min(100, parseInt(officerCount, 10) || 0)) : null;
+    const trimmedCount = officerCount.trim();
+    const parsedCount = trimmedCount
+      ? /^\d+$/.test(trimmedCount)
+        ? Math.min(100, parseInt(trimmedCount, 10))
+        : null
+      : null;
     const collar = parseCollarNumbers(collarNumbers);
     const timestampIso = new Date(timestamp).toISOString();
 

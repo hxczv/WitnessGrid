@@ -20,7 +20,9 @@ const serwist = new Serwist({
   runtimeCaching: [
     ...defaultCache,
     {
-      matcher: ({ url }) => url.pathname.startsWith("/incidents"),
+      // The public register feed, but never the signed-in user's own records.
+      matcher: ({ url }) =>
+        url.pathname.startsWith("/incidents") && !url.pathname.startsWith("/incidents/mine"),
       method: "GET",
       handler: new NetworkFirst({
         cacheName: "wg-register",

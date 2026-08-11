@@ -37,7 +37,7 @@ export function SavedAreasManager({ token }: { token: string }) {
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{area.name}</p>
                   <p className="timecode text-muted">
-                    {area.polygon.length - 1} points · {area.alerts} alert
+                    {area.polygon.length} points · {area.alerts} alert
                     {area.alerts === 1 ? "" : "s"}
                   </p>
                 </div>

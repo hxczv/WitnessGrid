@@ -66,6 +66,8 @@ export function isApiError(err: unknown): err is ApiClientError {
 export interface ApiOptions {
   baseUrl?: string;
   token?: string | null;
+  /** When false, the GET /incident/:id request skips the view-count increment. */
+  incrementView?: boolean;
 }
 
 function resolveBase(opts: ApiOptions): string {
@@ -82,7 +84,7 @@ function toApiClientError(status: number, payload: unknown): ApiClientError {
   return new ApiClientError(status, "unknown_error", `API request failed (status ${status})`);
 }
 
-const RETRYABLE_METHODS = new Set(["GET", "DELETE"]);
+const RETRYABLE_METHODS = new Set(["GET"]);
 const RETRY_DELAYS_MS = [300, 900];
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -219,7 +221,8 @@ export async function listIncidents(
 export type IncidentDetail = Incident & { rating_summary?: RatingSummary };
 
 export async function getIncident(id: string, opts: ApiOptions = {}): Promise<IncidentDetail> {
-  const data = await apiGet<unknown>(`/incident/${encodeURIComponent(id)}`, opts);
+  const query = opts.incrementView === false ? "?incrementView=0" : "";
+  const data = await apiGet<unknown>(`/incident/${encodeURIComponent(id)}${query}`, opts);
   const incident = parseOrThrow<Incident>(IncidentSchema, data);
   const ratingRaw = (data as { rating_summary?: unknown }).rating_summary;
   if (ratingRaw === undefined) return incident;
@@ -257,6 +260,15 @@ export interface IncidentRating {
   safety: number;
 }
 
+/** The rating summary for an incident (count, averages, the caller's own votes). */
+export async function getRatingSummary(
+  incidentId: string,
+  opts: ApiOptions = {},
+): Promise<RatingSummary> {
+  const data = await apiGet<unknown>(`/ratings/${encodeURIComponent(incidentId)}`, opts);
+  return parseOrThrow<RatingSummary>(RatingSummarySchema, data);
+}
+
 export async function rateIncident(
   incidentId: string,
   scores: { appropriateness: number; professionalism: number; safety: number },
@@ -272,10 +284,15 @@ export async function rateIncident(
   if (!parsed.success) {
     throw new ApiClientError(0, "unknown_error", "Malformed API response payload");
   }
-  return {
-    incident: (payload.incident as Incident | undefined) ?? null,
-    summary: parsed.data,
-  };
+  const incidentRaw = payload.incident;
+  if (incidentRaw !== undefined && incidentRaw !== null) {
+    const incidentParsed = IncidentSchema.safeParse(incidentRaw);
+    if (!incidentParsed.success) {
+      throw new ApiClientError(0, "unknown_error", "Malformed API response payload");
+    }
+    return { incident: incidentParsed.data, summary: parsed.data };
+  }
+  return { incident: null, summary: parsed.data };
 }
 
 export async function listSavedAreas(opts: ApiOptions = {}): Promise<SavedArea[]> {

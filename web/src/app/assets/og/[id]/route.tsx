@@ -9,7 +9,8 @@ type Props = { params: Promise<{ id: string }> };
 
 async function fetchIncident(id: string) {
   try {
-    return await getIncident(id, { baseUrl: serverApiBaseUrl() });
+    // Image-preview fetches must not count as views (crawlers, link previews).
+    return await getIncident(id, { baseUrl: serverApiBaseUrl(), incrementView: false });
   } catch {
     return null;
   }
