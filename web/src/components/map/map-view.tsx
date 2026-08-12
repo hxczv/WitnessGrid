@@ -25,6 +25,12 @@ import { SavedAreaDialog } from "@/components/saved-area-dialog";
 import { StatusBanner } from "@/components/status-banner";
 import { baseMapStyle, prefersDarkScheme } from "@/lib/map-tiles";
 import { addUkIeMaskLayer } from "@/lib/uk-ie-mask";
+import {
+  clusterImageExpression,
+  clusterTextOffsetExpression,
+  pinImageExpression,
+  registerPinImages,
+} from "@/lib/map-pins";
 
 const EMPTY_FC: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
@@ -174,17 +180,35 @@ export function MapView() {
       // maplibre blocks zoom-out past the zoom where the box fills the
       // screen, so other countries never come into view.
       map.addSource("incidents", { type: "geojson", data: EMPTY_FC });
+      // Teardrop pins, tip-anchored at the exact coordinates; coloured by
+      // incident type; clusters are pins sized by count.
+      registerPinImages(map, { accent, outline: bg });
       map.addLayer({
-        id: "incident-cluster",
-        type: "circle",
+        id: "incident-pin",
+        type: "symbol",
+        source: "incidents",
+        filter: ["!", ["has", "point_count"]],
+        layout: {
+          "icon-image": pinImageExpression(),
+          "icon-anchor": "bottom",
+          // maplibre scales icon collision boxes with tile size, so at the
+          // geofence zoom (~5.5) every box spans the whole viewport: symbols
+          // then displace each other and every query point hits every pin.
+          // Skip collision entirely and pick features from the source data.
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
+      });
+      map.addLayer({
+        id: "incident-cluster-pin",
+        type: "symbol",
         source: "incidents",
         filter: ["has", "point_count"],
-        paint: {
-          "circle-color": accent,
-          "circle-radius": ["step", ["get", "point_count"], 18, 10, 24, 25, 32],
-          "circle-opacity": 0.9,
-          "circle-stroke-color": bg,
-          "circle-stroke-width": 2,
+        layout: {
+          "icon-image": clusterImageExpression(),
+          "icon-anchor": "bottom",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
         },
       });
       map.addLayer({
@@ -196,20 +220,12 @@ export function MapView() {
           "text-field": ["get", "point_count_abbreviated"],
           "text-size": 11,
           "text-font": ["Noto Sans Medium"],
+          "text-anchor": "center",
+          "text-offset": clusterTextOffsetExpression(),
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
         },
         paint: { "text-color": bg },
-      });
-      map.addLayer({
-        id: "incident-point",
-        type: "circle",
-        source: "incidents",
-        filter: ["!", ["has", "point_count"]],
-        paint: {
-          "circle-color": accent,
-          "circle-radius": 7,
-          "circle-stroke-color": bg,
-          "circle-stroke-width": 2,
-        },
       });
 
       map.addSource("polygon-draft", { type: "geojson", data: EMPTY_FC });
@@ -226,35 +242,54 @@ export function MapView() {
         paint: { "line-color": accent, "line-width": 2 },
       });
 
+      // Pin picking is data-based: queryRenderedFeatures is unusable for
+      // symbol layers at this zoom (its collision boxes span the viewport), so
+      // project the source features and take the nearest within 16px.
+      const pickIncident = (point: { x: number; y: number }) => {
+        const feats = map.querySourceFeatures("incidents") as unknown as {
+          properties: { id?: unknown; cluster?: unknown; point_count?: unknown };
+          geometry: { type: string; coordinates: [number, number] };
+        }[];
+        let best: (typeof feats)[number] | null = null;
+        let bestDist = 16;
+        for (const f of feats) {
+          if (!f.geometry || f.geometry.type !== "Point") continue;
+          const p = map.project(f.geometry.coordinates);
+          const d = Math.hypot(p.x - point.x, p.y - point.y);
+          if (d < bestDist) {
+            bestDist = d;
+            best = f;
+          }
+        }
+        return best;
+      };
+
       map.on("click", (e) => {
+        const picked = pickIncident(e.point);
+        if (picked) {
+          if (picked.properties.cluster) {
+            const [lon, lat] = picked.geometry.coordinates;
+            map.easeTo({
+              center: [lon, lat],
+              zoom: Math.min(18, map.getZoom() + 2),
+            });
+          } else {
+            const id = picked.properties.id;
+            if (typeof id === "string") void router.push(`/incident/${id}`);
+          }
+          return;
+        }
         if (!drawingRef.current) return;
-        const hit = map.queryRenderedFeatures(e.point, {
-          layers: ["incident-point", "incident-cluster"],
-        });
-        if (hit.length > 0) return;
         setPolygon((prev) => addVertex(prev, [e.lngLat.lng, e.lngLat.lat]));
       });
 
-      map.on("click", "incident-cluster", (e) => {
-        const feature = e.features?.[0];
-        if (!feature || feature.geometry.type !== "Point") return;
-        const [lon, lat] = feature.geometry.coordinates;
-        map.easeTo({
-          center: [lon ?? 0, lat ?? 0],
-          zoom: Math.min(18, map.getZoom() + 2),
-        });
+      map.on("mousemove", (e) => {
+        if (drawingRef.current) {
+          map.getCanvas().style.cursor = "";
+          return;
+        }
+        map.getCanvas().style.cursor = pickIncident(e.point) ? "pointer" : "";
       });
-
-      map.on("click", "incident-point", (e) => {
-        const feature = e.features?.[0];
-        const id = feature?.properties?.id;
-        if (typeof id === "string") void router.push(`/incident/${id}`);
-      });
-
-      map.on("mouseenter", "incident-point", () => map.getCanvas().style.cursor = "pointer");
-      map.on("mouseleave", "incident-point", () => map.getCanvas().style.cursor = "");
-      map.on("mouseenter", "incident-cluster", () => map.getCanvas().style.cursor = "pointer");
-      map.on("mouseleave", "incident-cluster", () => map.getCanvas().style.cursor = "");
 
       map.on("moveend", onMoveEnd);
       void fetchVisible();
